@@ -1,0 +1,133 @@
+# -----------------------------------------------------------------------------
+# Ferreteria_Pos - Sistema POS (Emisor de Webhooks)
+# Proyecto 1 del desacoplamiento. Desplegable en Dokploy.
+#
+# Servicios:
+#   - pos-app   : Aplicación Laravel + Vite/React (caja/POS del personal)
+#   - pos-worker: Worker de colas (Redis) que envía los Webhooks a la Web
+#   - pos-redis : Redis (colas + caché del POS)
+#   - pos-db    : PostgreSQL 1 EXCLUSIVO del POS
+#
+# SEGURIDAD: PostgreSQL y Redis NO publican puertos hacia la IP pública.
+# Solo se comunican por la red interna de Docker. Para acceder desde fuera
+# (p.ej. herramientas de administración local) usa `docker exec` o un túnel SSH.
+# -----------------------------------------------------------------------------
+name: ferreteria-pos
+
+services:
+  pos-app:
+    build:
+      context: .
+      args:
+        - VITE_APP_NAME=Ferreteria POS
+    image: ferreteria-pos-app:latest
+    restart: unless-stopped
+    working_dir: /var/www/html
+    ports:
+      - "8080:80" # Cambia el puerto público según Dokploy (no exponer 5432/6379)
+    volumes:
+      - pos_storage:/var/www/html/storage/app
+    environment:
+      APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: "false"
+      APP_URL: https://pos.cma-shop.com
+      APP_NAME: "Ferreteria POS"
+      DB_CONNECTION: pgsql
+      DB_HOST: pos-db
+      DB_PORT: "5432"
+      DB_DATABASE: ferreteria_pos
+      DB_USERNAME: pos_user
+      DB_PASSWORD: ${POS_DB_PASSWORD:?Defina POS_DB_PASSWORD}
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: pos-redis
+      REDIS_PORT: "6379"
+      REDIS_CACHE_DB: "1"
+      REDIS_QUEUE_DB: "2"
+      REDIS_QUEUE: sync-queue
+      CACHE_STORE: redis
+      SYNC_ENABLED: "true"
+      SYNC_WEBHOOK_URL: ${SYNC_WEBHOOK_URL:?Defina SYNC_WEBHOOK_URL}
+      SYNC_WEBHOOK_TOKEN: ${SYNC_WEBHOOK_TOKEN:?Defina SYNC_WEBHOOK_TOKEN}
+      SYNC_WEBHOOK_SECRET: ${SYNC_WEBHOOK_SECRET:?Defina SYNC_WEBHOOK_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-productos}
+      APISUNAT_API_BASE_URL: ${APISUNAT_API_BASE_URL:-https://back.apisunat.com}
+      APISUNAT_PERSONA_ID: ${APISUNAT_PERSONA_ID:-}
+      APISUNAT_PERSONA_TOKEN: ${APISUNAT_PERSONA_TOKEN:-}
+      APISUNAT_CUSTOMER_EMAIL: ${APISUNAT_CUSTOMER_EMAIL:-}
+      APISUNAT_PDF_FORMAT: ${APISUNAT_PDF_FORMAT:-ticket80mm}
+      APISPERU_BASE_URL: ${APISPERU_BASE_URL:-https://dniruc.apisperu.com}
+      APISPERU_TOKEN: ${APISPERU_TOKEN:-}
+      SENTRY_LARAVEL_DSN: ${SENTRY_LARAVEL_DSN:-}
+    depends_on:
+      pos-db:
+        condition: service_healthy
+      pos-redis:
+        condition: service_started
+
+  # Worker de colas: procesa los SyncProductWebhookJob (envio a la Web).
+  # En Dokploy, permite arrancar este servicio como "One-off / Worker".
+  pos-worker:
+    image: ferreteria-pos-app:latest
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work redis --queue=sync-queue --tries=3 --timeout=55 --sleep=5 --max-time=3600
+    volumes:
+      - pos_storage:/var/www/html/storage/app
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: pos-db
+      DB_PORT: "5432"
+      DB_DATABASE: ferreteria_pos
+      DB_USERNAME: pos_user
+      DB_PASSWORD: ${POS_DB_PASSWORD:?Defina POS_DB_PASSWORD}
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: pos-redis
+      REDIS_PORT: "6379"
+      REDIS_QUEUE_DB: "2"
+      REDIS_QUEUE: sync-queue
+      SYNC_ENABLED: "true"
+      SYNC_WEBHOOK_URL: ${SYNC_WEBHOOK_URL:?Defina SYNC_WEBHOOK_URL}
+      SYNC_WEBHOOK_TOKEN: ${SYNC_WEBHOOK_TOKEN:?Defina SYNC_WEBHOOK_TOKEN}
+      SYNC_WEBHOOK_SECRET: ${SYNC_WEBHOOK_SECRET:?Defina SYNC_WEBHOOK_SECRET}
+    depends_on:
+      pos-db:
+        condition: service_healthy
+      pos-redis:
+        condition: service_started
+
+  pos-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - pos_redis:/data
+    # No exponer el puerto 6379 hacia la IP publica. Solo red interna de Docker.
+    expose:
+      - "6379"
+
+  pos-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ferreteria_pos
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: ${POS_DB_PASSWORD:?Defina POS_DB_PASSWORD}
+    volumes:
+      - pos_pgdata:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos_user -d ferreteria_pos"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # SEGURIDAD: NO publicar 5432 hacia la IP publica.
+    expose:
+      - "5432"
+
+volumes:
+  pos_pgdata:
+  pos_redis:
+  pos_storage:

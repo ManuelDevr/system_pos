@@ -1,0 +1,56 @@
+.git
+.gitignore
+.gitmodules
+.github
+.vscode
+.idea
+.nova
+
+# Dependencies and build output
+node_modules
+vendor
+public/build
+storage
+bootstrap/cache
+coverage
+playwright-report
+html
+.nyc_output
+
+# Test artifacts
+phpunit.result.cache
+.phpunit.cache
+test-results
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.cer
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.pub
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+.ssh/
+*.token
+*.secret
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.orig
+
+# Local DB / SQLite
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
