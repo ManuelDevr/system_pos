@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Producto;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\RequestException;
@@ -16,8 +15,9 @@ use Illuminate\Support\Facades\Log;
  *
  * - Se despacha a la cola "sync-queue" (Redis) para NO congelar la caja del vendedor.
  * - Reintentos automáticos: 3 intentos con retardo exponencial en caso de fallo de red.
+ * - Sin unicidad: cada guardado se sincroniza siempre; el payload guarda el estado final.
  */
-class SyncProductWebhookJob implements ShouldQueue, ShouldBeUnique
+class SyncProductWebhookJob implements ShouldQueue
 {
     use Queueable;
 
@@ -27,24 +27,11 @@ class SyncProductWebhookJob implements ShouldQueue, ShouldBeUnique
     /** Tiempo máximo de ejecución del envío HTTP. */
     public $timeout = 20;
 
-    /**
-     * Firma de unicidad basada en SKU + timestamp para evitar duplicados en ráfagas.
-     */
-    public $uniqueFor = 10;
-
     public function __construct(
         protected string $sku,
         protected array $payload,
         protected string $action, // 'create' | 'update' | 'delete'
     ) {}
-
-    /**
-     * Identificador de unicidad: evita envíos duplicados consecutivos del mismo SKU.
-     */
-    public function uniqueId(): string
-    {
-        return 'product-sync.'.$this->sku;
-    }
 
     /**
      * Implementa el reintento con retardo exponencial (3 intentos).

@@ -38,6 +38,7 @@ class ProductSyncService
             'unidad_medida'  => $product->unidad_medida,
             'codigo_barras'  => $product->codigo_barras,
             'imagen_url'     => $product->imagen_url,
+            'imagenes'       => $product->imagenes,
             'video_url'      => $product->video_url,
             'mostrar_video'  => (bool) $product->mostrar_video,
             'disponible'     => $product->estado === 'Activo' && $product->stock > 0,
