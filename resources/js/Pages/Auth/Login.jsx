@@ -11,6 +11,7 @@ export default function Login({ status, canResetPassword }) {
         email: '',
         password: '',
         remember: false,
+        website: '',
     });
 
     useEffect(() => {

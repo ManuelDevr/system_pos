@@ -30,6 +30,8 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            // Honeypot: campo oculto "website" que los bots rellenan → máx 0 caracteres.
+            'website' => ['max:0'],
         ];
     }
 
