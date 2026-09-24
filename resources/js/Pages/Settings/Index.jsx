@@ -437,10 +437,6 @@ export default function Index({ configuracion }) {
                                         value: 'plataforma',
                                         label: 'Plataforma-Sunat (en la nube)',
                                     },
-                                    {
-                                        value: 'apisunat',
-                                        label: 'APISUNAT (actual)',
-                                    },
                                 ]}
                                 error={errors.facturacion_provider}
                             />

@@ -2,8 +2,10 @@
 
 return [
 
-    // 'apisunat' (default, flujo actual) | 'plataforma' (Plataforma-Sunat API nativa)
-    'provider' => env('FACTURACION_PROVIDER', 'apisunat'),
+    // Proveedor de facturación electrónica. El POS solo emite contra la
+    // Plataforma-Sunat; este valor es la espalda para cuando el campo
+    // 'facturacion_provider' de Configuración del Sistema esté vacío.
+    'provider' => env('FACTURACION_PROVIDER', 'plataforma'),
 
     // Formato PDF por defecto para la Plataforma-Sunat (a4, a5, ticket-80, ticket-58)
     'default_pdf_format' => env('SUNAT_PLATFORM_PDF_FORMAT', 'ticket-80'),

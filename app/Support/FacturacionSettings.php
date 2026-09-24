@@ -21,7 +21,7 @@ class FacturacionSettings
             return $db->facturacion_provider;
         }
 
-        return (string) config('facturacion.provider', 'apisunat');
+        return (string) config('facturacion.provider', 'plataforma');
     }
 
     public static function isPlataforma(): bool
