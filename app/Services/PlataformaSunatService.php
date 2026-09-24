@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Log;
  * Integración con la Plataforma-Sunat (API nativa, multi-tenant desplegada en
  * https://api.cma-shop.com). Autentica con X-Api-Key + X-Api-Secret.
  *
- * - Emisión:  POST   /sunat/facturas | /sunat/boletas
- * - Estado:   GET    /v1/facturas/{id} | /v1/boletas/{id}
+ * - Emisión:  POST   /facturas | /boletas
+ * - Estado:   GET    /facturas/{id} | /boletas/{id}
  * - PDF:      GET    /sunat/facturas|boletas/{id}/pdf?format=...&api_key=...&api_secret=...
  */
 class PlataformaSunatService implements SunatProvider
@@ -87,8 +87,8 @@ class PlataformaSunatService implements SunatProvider
         ];
 
         $endpoint = $tipoDoc === '01'
-            ? "{$this->baseUrl}/sunat/facturas"
-            : "{$this->baseUrl}/sunat/boletas";
+            ? "{$this->baseUrl}/facturas"
+            : "{$this->baseUrl}/boletas";
 
         try {
             $response = Http::timeout(45)
@@ -160,7 +160,7 @@ class PlataformaSunatService implements SunatProvider
                     'X-Api-Key' => $this->apiKey,
                     'X-Api-Secret' => $this->apiSecret,
                 ])
-                ->get("{$this->baseUrl}/v1/{$endpoint}/{$documentId}");
+                ->get("{$this->baseUrl}/{$endpoint}/{$documentId}");
 
             if ($response->failed()) {
                 return [
@@ -220,7 +220,7 @@ class PlataformaSunatService implements SunatProvider
             'api_secret' => $this->apiSecret,
         ]));
 
-        return "{$this->baseUrl}/sunat/{$tipo}/{$documentId}/pdf?{$query}";
+        return "{$this->baseUrl}/{$tipo}/{$documentId}/pdf?{$query}";
     }
 
     public function buildFileName(Venta $venta, string $tipoDoc): string
