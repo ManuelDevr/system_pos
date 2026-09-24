@@ -10,7 +10,12 @@
 export function getPdfUrls(pdfUrl) {
     if (!pdfUrl) return { ticket: null, a4: null };
 
-    if (pdfUrl.includes('/sunat/') && pdfUrl.includes('/pdf')) {
+    // Plataforma-Sunat: .../facturas|boletas/{id}/pdf?format=ticket-80 → A4 cambia el query `format=a4`.
+    // (También acepta rutas históricas .../sunat/{tipo}/{id}/pdf.)
+    if (
+        (pdfUrl.includes('/sunat/') || /[/.]pdf\?/.test(pdfUrl)) &&
+        /[?&]format=/.test(pdfUrl)
+    ) {
         try {
             const u = new URL(pdfUrl);
             u.searchParams.set('format', 'a4');
