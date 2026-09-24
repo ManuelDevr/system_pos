@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Venta;
-use App\Services\ApisunatService;
+use App\Services\FacturacionFactory;
 use Illuminate\Console\Command;
 
 class RevisarEstadoSunat extends Command
@@ -29,11 +29,11 @@ class RevisarEstadoSunat extends Command
             return Command::SUCCESS;
         }
 
-        $service = new ApisunatService();
+        $provider = FacturacionFactory::make();
         $procesadas = 0;
 
         foreach ($pendientes as $venta) {
-            $estado = $service->getEstado($venta->sunat_document_id);
+            $estado = $provider->getEstado($venta->sunat_document_id, $venta);
 
             if (empty($estado['status']) || isset($estado['error'])) {
                 $this->warn("Venta #{$venta->id} ({$venta->nro_comprobante}): no se pudo consultar el estado.");
@@ -50,10 +50,11 @@ class RevisarEstadoSunat extends Command
             }
 
             $esAceptado = $statusSunat === 'ACEPTADO';
+            $esExcepcion = $statusSunat === 'EXCEPCION';
             $faults = $estado['faults'] ?? [];
 
             $venta->update([
-                'sunat_status' => $esAceptado ? 'ACEPTADO' : 'ERROR',
+                'sunat_status' => $esAceptado ? 'ACEPTADO' : ($esExcepcion ? 'EXCEPCION' : 'ERROR'),
                 'sunat_pdf_url' => $esAceptado ? $venta->sunat_pdf_url : null,
                 'sunat_cdr' => $esAceptado
                     ? ($estado['cdr'] ?? $venta->sunat_cdr)

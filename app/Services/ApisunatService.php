@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Contracts\SunatProvider;
 use App\Models\Venta;
 use App\Models\Configuracion;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class ApisunatService
+class ApisunatService implements SunatProvider
 {
     private string $baseUrl;
 
@@ -26,6 +27,11 @@ class ApisunatService
         $this->personaToken = config('apisunat.persona_token', '');
         $this->customerEmail = config('apisunat.customer_email', '');
         $this->pdfFormat = config('apisunat.default_pdf_format', 'ticket80mm');
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->personaId !== '' && $this->personaToken !== '';
     }
 
     /**
@@ -101,7 +107,7 @@ class ApisunatService
      *
      * @return array{production: bool, status: string, type: string, fileName: string, xml: string, cdr: string, faults: array, notes: array}|array
      */
-    public function getEstado(string $documentId): array
+    public function getEstado(string $documentId, ?Venta $venta = null): array
     {
         try {
             $response = Http::timeout(15)->get(

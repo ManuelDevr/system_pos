@@ -64,7 +64,15 @@ class HandleInertiaRequests extends Middleware
                         ->values()
                   )
                 : [],
-            'config' => Cache::remember('app_config', 3600, fn () => \App\Models\Configuracion::first()),
+            'config' => Cache::remember('app_config', 3600, function () {
+                $config = \App\Models\Configuracion::first();
+                if ($config) {
+                    foreach (['sunat_plataforma_api_key', 'sunat_plataforma_api_secret', 'sunat_webhook_secret', 'apisperu_token'] as $campo) {
+                        $config->{$campo} = null;
+                    }
+                }
+                return $config;
+            }),
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),

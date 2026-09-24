@@ -22,6 +22,16 @@ class SettingController extends Controller
             }
         }
 
+        foreach (['sunat_plataforma_api_key', 'sunat_plataforma_api_secret', 'sunat_webhook_secret', 'apisperu_token'] as $campo) {
+            if ($config && $config->{$campo}) {
+                try {
+                    $config->{$campo} = Crypt::decryptString($config->{$campo});
+                } catch (\Exception $e) {
+                    $config->{$campo} = '';
+                }
+            }
+        }
+
         return Inertia::render('Settings/Index', [
             'configuracion' => $config,
         ]);
@@ -48,6 +58,13 @@ class SettingController extends Controller
             'serie_nota_credito' => 'nullable|string|max:10',
             'serie_nota_debito'  => 'nullable|string|max:10',
             'igv'               => 'nullable|numeric|min:0|max:100',
+            'facturacion_provider' => 'nullable|string|max:20',
+            'sunat_plataforma_base_url' => 'nullable|string|max:255',
+            'sunat_plataforma_api_key'  => 'nullable|string',
+            'sunat_plataforma_api_secret' => 'nullable|string',
+            'sunat_webhook_secret' => 'nullable|string',
+            'apisperu_base_url' => 'nullable|string|max:255',
+            'apisperu_token' => 'nullable|string',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -77,6 +94,14 @@ class SettingController extends Controller
             $validated['sol_clave'] = Crypt::encryptString($validated['sol_clave']);
         } else {
             unset($validated['sol_clave']);
+        }
+
+        foreach (['sunat_plataforma_api_key', 'sunat_plataforma_api_secret', 'sunat_webhook_secret', 'apisperu_token'] as $campo) {
+            if (!empty($validated[$campo])) {
+                $validated[$campo] = Crypt::encryptString($validated[$campo]);
+            } else {
+                unset($validated[$campo]);
+            }
         }
 
         $config->fill($validated);

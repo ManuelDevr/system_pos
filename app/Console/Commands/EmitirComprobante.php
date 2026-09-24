@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Venta;
-use App\Services\ApisunatService;
+use App\Services\FacturacionFactory;
 use Illuminate\Console\Command;
 
 class EmitirComprobante extends Command
@@ -47,15 +47,15 @@ class EmitirComprobante extends Command
         $this->line("  Cliente:   {$clienteNombre}");
         $this->line('');
 
-        $this->info("Enviando a APISUNAT...");
+        $this->info("Enviando comprobante...");
 
-        $service = new ApisunatService();
+        $service = FacturacionFactory::make();
         $resultado = $service->emitirComprobante($venta, $tipoDoc);
 
         $this->line('');
-        $this->line('--- Respuesta de APISUNAT ---');
+        $this->line('--- Respuesta del proveedor ---');
         $this->line(json_encode($resultado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        $this->line('-----------------------------');
+        $this->line('-------------------------------');
 
         $pdfUrl = null;
         if (isset($resultado['documentId'])) {

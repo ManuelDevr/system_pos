@@ -33,6 +33,7 @@ id_ed25519
 Homestead.json
 Homestead.yaml
 /storage/*.key
+/storage/framework/
 /storage/pail
 
 # --- Node & Build Tools ---

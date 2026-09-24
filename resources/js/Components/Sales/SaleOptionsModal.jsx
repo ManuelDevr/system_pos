@@ -1,5 +1,6 @@
 import InvoiceA4 from '@/Components/Sales/InvoiceA4';
 import Ticket from '@/Components/Sales/Ticket';
+import { getPdfUrls } from '@/Utils/sunatPdf';
 import { usePage } from '@inertiajs/react';
 import {
     CheckCircle,
@@ -52,12 +53,10 @@ export default function SaleOptionsModal({ isOpen, onClose, onNewSale, sale }) {
               year: 'numeric',
           });
 
-    // PDF de APISUNAT: el guardado en la venta es el ticket80mm.
-    // Para A4 derivamos la URL cambiando el formato.
-    const pdfTicketUrl = sale.sunat_pdf_url;
-    const pdfA4Url = pdfTicketUrl
-        ? pdfTicketUrl.replace(/\/getPDF\/[^/]+/, '/getPDF/A4')
-        : null;
+    // PDF oficial (APISUNAT o Plataforma-Sunat): ticket 80mm y A4 según proveedor.
+    const { ticket: pdfTicketUrl, a4: pdfA4Url } = getPdfUrls(
+        sale.sunat_pdf_url,
+    );
 
     const openPdf = (format) => {
         const target = format === 'A4' ? pdfA4Url : pdfTicketUrl;

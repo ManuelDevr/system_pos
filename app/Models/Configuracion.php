@@ -28,6 +28,13 @@ class Configuracion extends Model
         'serie_nota_credito',
         'serie_nota_debito',
         'igv',
+        'facturacion_provider',
+        'sunat_plataforma_base_url',
+        'sunat_plataforma_api_key',
+        'sunat_plataforma_api_secret',
+        'sunat_webhook_secret',
+        'apisperu_base_url',
+        'apisperu_token',
     ];
 
     protected $casts = [

@@ -9,8 +9,9 @@ use App\Models\ConversionUnidadProducto;
 use App\Models\Unidad;
 use App\Models\Configuracion;
 use App\Http\Requests\StoreSaleRequest;
-use App\Services\ApisunatService;
+use App\Services\FacturacionFactory;
 use App\Services\KardexService;
+use App\Support\FacturacionSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -200,23 +201,24 @@ class SaleController extends Controller
             $rucCliente = $venta->documento_cliente;
 
             if ($request->boolean('enviar_sunat') && $tipoDoc) {
-                $apisunatEnabled = config('apisunat.persona_id') && config('apisunat.persona_token');
+                $provider = FacturacionFactory::make();
 
-                if (! $apisunatEnabled) {
-                    $sunat['message'] = 'APISUNAT no configurado en el servidor (.env).';
+                if (! $provider->isConfigured()) {
+                    $sunat['message'] = FacturacionSettings::isPlataforma()
+                        ? 'Plataforma SUNAT no configurada (Configuración del Sistema).'
+                        : 'APISUNAT no configurado (Configuración del Sistema).';
                 } elseif ($tipoDoc === '01' && strlen($rucCliente) !== 11) {
                     $sunat['message'] = 'Para emitir Factura, el cliente debe tener RUC (11 dígitos).';
                 } elseif ($tipoDoc === '03' && $rucCliente !== '' && ! in_array(strlen($rucCliente), [8, 11])) {
                     $sunat['message'] = 'El cliente debe tener DNI (8) o RUC (11) para emitir la Boleta.';
                 } else {
-                    $apisunat = new ApisunatService();
-                    $resultado = $apisunat->emitirComprobante($venta, $tipoDoc);
+                    $resultado = $provider->emitirComprobante($venta, $tipoDoc);
                     $esError = ($resultado['status'] ?? '') === 'ERROR';
 
                     $pdfUrl = null;
                     if (isset($resultado['documentId'])) {
-                        $fileName = $resultado['fileName'] ?? $apisunat->buildFileName($venta, $tipoDoc);
-                        $pdfUrl = $apisunat->getPDFUrl($resultado['documentId'], $fileName);
+                        $fileName = $resultado['fileName'] ?? $provider->buildFileName($venta, $tipoDoc);
+                        $pdfUrl = $provider->getPDFUrl($resultado['documentId'], $fileName);
                     }
 
                     $venta->update([
@@ -309,13 +311,20 @@ class SaleController extends Controller
 
         $venta->load(['detalles.producto', 'detalles.unidad', 'cliente']);
 
-        $apisunatService = new ApisunatService();
-        $resultado = $apisunatService->emitirComprobante($venta, $tipoDoc);
+        $provider = FacturacionFactory::make();
+
+        if (! $provider->isConfigured()) {
+            return back()->withErrors(['sunat' => FacturacionSettings::isPlataforma()
+                ? 'Plataforma SUNAT no configurada (Configuración del Sistema).'
+                : 'APISUNAT no configurado (Configuración del Sistema).']);
+        }
+
+        $resultado = $provider->emitirComprobante($venta, $tipoDoc);
 
         $pdfUrl = null;
         if (isset($resultado['documentId'])) {
-            $fileName = $resultado['fileName'] ?? $apisunatService->buildFileName($venta, $tipoDoc);
-            $pdfUrl = $apisunatService->getPDFUrl($resultado['documentId'], $fileName);
+            $fileName = $resultado['fileName'] ?? $provider->buildFileName($venta, $tipoDoc);
+            $pdfUrl = $provider->getPDFUrl($resultado['documentId'], $fileName);
         }
 
         $esError = ($resultado['status'] ?? '') === 'ERROR';

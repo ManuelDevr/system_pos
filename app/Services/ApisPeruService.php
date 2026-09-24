@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\ApisPeruSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,8 +14,8 @@ class ApisPeruService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('apisperu.base_url', 'https://dniruc.apisperu.com'), '/');
-        $this->token = config('apisperu.token', '');
+        $this->baseUrl = ApisPeruSettings::baseUrl();
+        $this->token = ApisPeruSettings::token();
     }
 
     /**
@@ -37,7 +38,7 @@ class ApisPeruService
         }
 
         if ($this->token === '') {
-            return ['error' => 'APISPERU_TOKEN no configurado en el servidor (.env).'];
+            return ['error' => 'Token de APISPERU no configurado (Configuración del Sistema).'];
         }
 
         try {
