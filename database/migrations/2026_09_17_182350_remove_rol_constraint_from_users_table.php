@@ -13,6 +13,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_rol_check;');
         });
@@ -23,6 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             DB::statement("ALTER TABLE users ADD CONSTRAINT users_rol_check CHECK (rol::text = ANY (ARRAY['Administrador'::character varying, 'Cajero'::character varying]::text[]))");
         });

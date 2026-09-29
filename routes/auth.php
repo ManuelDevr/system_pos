@@ -12,10 +12,13 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    // Public registration disabled for security. Admin manages users via /gestion-usuarios.
-    // Route::get('register', [RegisteredUserController::class, 'create'])
-    //     ->name('register');
-    // Route::post('register', [RegisteredUserController::class, 'store']);
+    // Registro público: solo disponible cuando la base de datos no tiene
+    // ningún usuario. El primer alta crea el Administrador y a partir de ahí
+    // EnsureFirstUserRegistration devuelve 404 (las cuentas nuevas las crea el
+    // Administrador desde /gestion-usuarios).
+    Route::get('register', [RegisteredUserController::class, 'create'])
+        ->name('register');
+    Route::post('register', [RegisteredUserController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
