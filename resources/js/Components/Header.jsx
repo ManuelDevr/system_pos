@@ -123,7 +123,7 @@ const Header = ({ toggleSidebar }) => {
                     Perfil
                   </Link>
                   <a
-                    href={route('store.index')}
+                    href="https://www.cma-shop.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setUserMenuOpen(false)}

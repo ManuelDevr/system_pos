@@ -160,7 +160,7 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
         type: 'item', 
         icon: Store, 
         label: 'Mi Tienda Web', 
-        routeName: 'store.index', 
+        external: 'https://www.cma-shop.com', 
     },
     { 
         type: 'item', 
@@ -264,11 +264,11 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
             if (element.type === 'item') {
                 if (element.permission && !userPermissions.includes(element.permission)) return null;
                 
-                if (element.routeName === 'store.index') {
+                if (element.external) {
                     return (
                         <a 
                             key={idx}
-                            href={route(element.routeName)}
+                            href={element.external}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center h-10 px-3 rounded-xl text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100"
