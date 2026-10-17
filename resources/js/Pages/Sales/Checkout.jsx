@@ -347,7 +347,7 @@ export default function Checkout({
                 cliente_tipo_doc: tipoDocumento,
                 cliente_documento: numeroDocumento || null,
                 cliente_nombre: nombreCliente.trim() || 'SIN NOMBRE',
-                items: items.map((item) => ({
+                items: cart.map((item) => ({
                     producto_id: item.producto_id,
                     cantidad: item.cantidad,
                     unidad_id: item.unidad_id,
@@ -375,7 +375,6 @@ export default function Checkout({
         setPaymentMethod('Efectivo');
         setSearchTerm('');
         setTipoComprobante('Boleta');
-        setEnviarSunat(true);
         setSale(null);
         router.visit(route('venta-rapida'));
     };
