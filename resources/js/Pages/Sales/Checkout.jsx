@@ -11,9 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function Checkout({
     serie,
-    numero,
     serie_factura,
-    numero_factura,
     igv,
     metodos_pago,
     productos,
@@ -33,7 +31,7 @@ export default function Checkout({
     } = useCartStore();
 
     const [tipoComprobante, setTipoComprobante] = useState('Boleta');
-    const [enviarSunat, setEnviarSunat] = useState(false);
+    // SUNAT: emisión automática a Plataforma-Sunat (no gestionado desde UI).
     const [tipoDocumento, setTipoDocumento] = useState('DNI');
     const [numeroDocumento, setNumeroDocumento] = useState('');
     const [nombreCliente, setNombreCliente] = useState('');
@@ -83,9 +81,6 @@ export default function Checkout({
 
     const isFactura = tipoComprobante === 'Factura';
     const serieActual = isFactura ? serie_factura || 'F001' : serie || 'B001';
-    const numeroActual = isFactura
-        ? numero_factura || '000001'
-        : numero || '000001';
 
     const maxDocLength = tipoDocumento === 'RUC' ? 11 : 8;
     const canConsultar = numeroDocumento.length === maxDocLength;
@@ -402,15 +397,16 @@ export default function Checkout({
                     >
                         <Plus size={16} /> Nueva Venta
                     </button>
-                        {sale && (
-                            <button
-                                type="button"
-                                onClick={() => abrirVisorVenta(sale, config)}
-                                className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
-                            >
-                                Ver Comprobante ({sale.nro_comprobante ?? `Venta #${sale.id}`})
-                            </button>
-                        )}
+                    {sale && (
+                        <button
+                            type="button"
+                            onClick={() => abrirVisorVenta(sale, config)}
+                            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
+                        >
+                            Ver Comprobante (
+                            {sale.nro_comprobante ?? `Venta #${sale.id}`})
+                        </button>
+                    )}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <Sparkles size={20} className="text-violet-600" />
@@ -430,7 +426,13 @@ export default function Checkout({
                         <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-600">
                             N°{' '}
                             <span className="text-slate-800">
-                                {isFactura ? (serie_factura ? '' : '') : (serie ? '' : '')}
+                                {isFactura
+                                    ? serie_factura
+                                        ? ''
+                                        : ''
+                                    : serie
+                                      ? ''
+                                      : ''}
                             </span>
                         </span>
                         <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">
@@ -482,14 +484,14 @@ export default function Checkout({
                                 docOrigen={docOrigen}
                                 consultarDocumento={consultarDocumento}
                                 canConsultar={canConsultar}
-                                 disabled={
-                                     cart.length === 0 ||
-                                     (paymentMethod === 'Efectivo' &&
-                                         !montoValido) ||
-                                     sunatHint
-                                 }
-                                 onPay={handlePay}
-                            sunatHint={sunatHint}
+                                disabled={
+                                    cart.length === 0 ||
+                                    (paymentMethod === 'Efectivo' &&
+                                        !montoValido) ||
+                                    sunatHint
+                                }
+                                onPay={handlePay}
+                                sunatHint={sunatHint}
                             />
                         </div>
 
