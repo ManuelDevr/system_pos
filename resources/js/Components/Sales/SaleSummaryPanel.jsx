@@ -3,7 +3,9 @@ import {
     CheckCircle,
     CreditCard,
     Landmark,
-    QrCode,
+    Loader2,
+    Search,
+    Smartphone,
     User,
 } from 'lucide-react';
 
