@@ -9,13 +9,7 @@ import { Package, Plus, ShoppingCart, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
-export default function Checkout({
-    serie,
-    serie_factura,
-    igv,
-    metodos_pago,
-    productos,
-}) {
+export default function Checkout({ igv, metodos_pago, productos }) {
     const { config, flash } = usePage().props;
 
     const {
@@ -58,7 +52,6 @@ export default function Checkout({
     const [paymentMethod, setPaymentMethod] = useState('Efectivo');
     const [paidWith, setPaidWith] = useState('');
 
-    const [sale, setSale] = useState(null);
     const lastSaleIdRef = useRef(null);
 
     const igvRate = useMemo(
@@ -80,7 +73,6 @@ export default function Checkout({
     }, [paidWith, total]);
 
     const isFactura = tipoComprobante === 'Factura';
-    const serieActual = isFactura ? serie_factura || 'F001' : serie || 'B001';
 
     const maxDocLength = tipoDocumento === 'RUC' ? 11 : 8;
     const canConsultar = numeroDocumento.length === maxDocLength;
@@ -161,7 +153,6 @@ export default function Checkout({
     useEffect(() => {
         if (flash?.last_sale && flash.last_sale.id !== lastSaleIdRef.current) {
             lastSaleIdRef.current = flash.last_sale.id;
-            setSale(flash.last_sale);
             clearCart();
             setNumeroDocumento('');
             setNombreCliente('');
@@ -376,7 +367,6 @@ export default function Checkout({
         setPaymentMethod('Efectivo');
         setSearchTerm('');
         setTipoComprobante('Boleta');
-        setSale(null);
         router.visit(route('venta-rapida'));
     };
 
@@ -397,16 +387,6 @@ export default function Checkout({
                     >
                         <Plus size={16} /> Nueva Venta
                     </button>
-                    {sale && (
-                        <button
-                            type="button"
-                            onClick={() => abrirVisorVenta(sale, config)}
-                            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
-                        >
-                            Ver Comprobante (
-                            {sale.nro_comprobante ?? `Venta #${sale.id}`})
-                        </button>
-                    )}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <Sparkles size={20} className="text-violet-600" />
@@ -420,21 +400,6 @@ export default function Checkout({
                         </p>
                     </div>
                     <div className="flex items-center gap-2 text-xs font-bold">
-                        <span className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-violet-700">
-                            {serieActual}
-                        </span>
-                        <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-600">
-                            N°{' '}
-                            <span className="text-slate-800">
-                                {isFactura
-                                    ? serie_factura
-                                        ? ''
-                                        : ''
-                                    : serie
-                                      ? ''
-                                      : ''}
-                            </span>
-                        </span>
                         <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">
                             IGV {igvRate.toFixed(2)}%
                         </span>

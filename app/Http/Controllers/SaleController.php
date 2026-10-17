@@ -37,14 +37,9 @@ class SaleController extends Controller
     public function checkout()
     {
         $config = Configuracion::first();
-        $serieBoleta = $config?->serie_boleta ?: 'B001';
-        $serieFactura = $config?->serie_factura ?: 'F001';
 
         return Inertia::render('Sales/Checkout', [
-            // El correlativo lo asigna la Plataforma-Sunat: aquí solo se
-            // informa la serie configurada para mostrarla en la interfaz.
-            'serie' => $serieBoleta,
-            'serie_factura' => $serieFactura,
+            // El correlativo lo asigna la Plataforma-Sunat al emitir.
             'igv' => (float) ($config?->igv ?? 18.00),
             'metodos_pago' => $config?->metodos_pago ?? ['Efectivo', 'Transferencia', 'Yape', 'Plin', 'BCP'],
             'productos' => Producto::select('id', 'nombre', 'sku', 'codigo_barras', 'stock', 'precio_venta', 'unidad_medida', 'marca_id', 'imagen_url')

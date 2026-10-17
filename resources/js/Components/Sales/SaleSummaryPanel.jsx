@@ -225,9 +225,6 @@ export default function SaleSummaryPanel({
                     <CheckCircle size={20} />
                     Realizar Venta
                 </button>
-                <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    El stock y el kardex se actualizarán automáticamente
-                </p>
             </section>
         </div>
     );
