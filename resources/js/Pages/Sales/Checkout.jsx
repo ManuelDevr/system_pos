@@ -1,9 +1,9 @@
 import CommonModal from '@/Components/CommonModal';
 import SaleDetailsPanel from '@/Components/Sales/SaleDetailsPanel';
-import SaleOptionsModal from '@/Components/Sales/SaleOptionsModal';
 import SaleSummaryPanel from '@/Components/Sales/SaleSummaryPanel';
 import { useCartStore } from '@/Hooks/useCartStore';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { abrirVisorVenta } from '@/Utils/salePdfLoader';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Package, Plus, ShoppingCart, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -61,7 +61,6 @@ export default function Checkout({
     const [paidWith, setPaidWith] = useState('');
 
     const [sale, setSale] = useState(null);
-    const [isOptionsModalOpen, setOptionsModalOpen] = useState(false);
     const lastSaleIdRef = useRef(null);
 
     const igvRate = useMemo(
@@ -83,9 +82,7 @@ export default function Checkout({
     }, [paidWith, total]);
 
     const isFactura = tipoComprobante === 'Factura';
-    const serieActual = isFactura
-        ? serie_factura || 'F001'
-        : serie || 'B001';
+    const serieActual = isFactura ? serie_factura || 'F001' : serie || 'B001';
     const numeroActual = isFactura
         ? numero_factura || '000001'
         : numero || '000001';
@@ -166,12 +163,11 @@ export default function Checkout({
         setNombreCliente('');
     };
 
-    // Cuando el backend confirma la venta, abrimos OPCIONES DE VENTA
+    // Cuando el backend confirma la venta, abrimos el visor de PDF modal
     useEffect(() => {
         if (flash?.last_sale && flash.last_sale.id !== lastSaleIdRef.current) {
             lastSaleIdRef.current = flash.last_sale.id;
             setSale(flash.last_sale);
-            setOptionsModalOpen(true);
             clearCart();
             setNumeroDocumento('');
             setNombreCliente('');
@@ -180,8 +176,11 @@ export default function Checkout({
             setTipoDocumento('DNI');
             setPaidWith('');
             setPaymentMethod('Efectivo');
+
+            // Abrir visor de PDF modal reutilizable
+            abrirVisorVenta(flash.last_sale, config);
         }
-    }, [flash]);
+    }, [flash, config, clearCart]);
 
     // Lógica del Escáner de Código de Barras
     const barcodeBuffer = useRef('');
@@ -334,7 +333,8 @@ export default function Checkout({
             route('ventas.store'),
             {
                 total: total,
-                pagado_con: paymentMethod === 'Efectivo' ? parseFloat(paidWith) : null,
+                pagado_con:
+                    paymentMethod === 'Efectivo' ? parseFloat(paidWith) : null,
                 vuelto: paymentMethod === 'Efectivo' ? vuelto : null,
                 descuento: descuentoTotal,
                 metodo_pago: paymentMethod,
@@ -360,11 +360,6 @@ export default function Checkout({
         );
     };
 
-    const handleCloseOptions = () => {
-        setOptionsModalOpen(false);
-        router.visit(route('venta-rapida'));
-    };
-
     const handleNewSale = () => {
         clearCart();
         setNumeroDocumento('');
@@ -377,7 +372,7 @@ export default function Checkout({
         setSearchTerm('');
         setTipoComprobante('Boleta');
         setEnviarSunat(true);
-        setOptionsModalOpen(false);
+        setSale(null);
         router.visit(route('venta-rapida'));
     };
 
@@ -398,6 +393,15 @@ export default function Checkout({
                     >
                         <Plus size={16} /> Nueva Venta
                     </button>
+                    {sale && (
+                        <button
+                            type="button"
+                            onClick={() => abrirVisorVenta(sale, config)}
+                            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
+                        >
+                            Ver Comprobante ({sale.nro_comprobante})
+                        </button>
+                    )}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <Sparkles size={20} className="text-violet-600" />
@@ -588,13 +592,6 @@ export default function Checkout({
                     </button>
                 </div>
             </CommonModal>
-
-            <SaleOptionsModal
-                isOpen={isOptionsModalOpen}
-                onClose={() => setOptionsModalOpen(false)}
-                onNewSale={handleCloseOptions}
-                sale={sale}
-            />
         </AuthenticatedLayout>
     );
 }

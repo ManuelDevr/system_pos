@@ -40,6 +40,11 @@ RUN apk add --no-cache \
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Limite de memoria. Por defecto PHP CLI/FPM usa 128M, insuficiente para
+# `php artisan route:cache` en este proyecto (falla con "Allowed memory size
+# of 134217728 bytes exhausted" en RouteCacheCommand).
+RUN printf 'memory_limit=512M\n' > /usr/local/etc/php/conf.d/zz-memory-limit.ini
+
 # Copiar el codigo fuente
 COPY --from=frontend /app/public/build ./public/build
 COPY . .

@@ -1,5 +1,5 @@
-import { getPdfUrls } from '@/Utils/sunatPdf';
-import { router } from '@inertiajs/react';
+import { abrirVisorVenta } from '@/Utils/salePdfLoader';
+import { router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle,
@@ -10,27 +10,13 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useReactToPrint } from 'react-to-print';
-import InvoiceA4 from './InvoiceA4';
-import Ticket from './Ticket';
 
 export default function SaleDetailModal({ isOpen, onClose, sale }) {
+    const { config } = usePage().props;
     const [showConfirm, setShowConfirm] = useState(false);
     const [printMenuOpen, setPrintMenuOpen] = useState(false);
-    const ticketRef = useRef();
-    const a4Ref = useRef();
-
-    const printTicket = useReactToPrint({
-        contentRef: ticketRef,
-        documentTitle: `Ticket_${sale?.nro_comprobante || 'Venta'}`,
-    });
-
-    const printA4 = useReactToPrint({
-        contentRef: a4Ref,
-        documentTitle: `Factura_${sale?.nro_comprobante || 'Venta'}`,
-    });
 
     if (!isOpen || !sale) return null;
 
@@ -54,22 +40,14 @@ export default function SaleDetailModal({ isOpen, onClose, sale }) {
         );
     };
 
-    const openPdf = (format) => {
-        if (!sale.sunat_pdf_url) return false;
-        const { ticket, a4 } = getPdfUrls(sale.sunat_pdf_url);
-        const target = format === 'A4' ? a4 : ticket;
-        window.open(target, '_blank');
-        return true;
-    };
-
     const printA4Action = () => {
-        if (!openPdf('A4')) printA4();
         setPrintMenuOpen(false);
+        abrirVisorVenta(sale, config);
     };
 
     const printTicketAction = () => {
-        if (!openPdf('ticket80mm')) printTicket();
         setPrintMenuOpen(false);
+        abrirVisorVenta(sale, config);
     };
 
     const sunatInfo = (() => {
@@ -112,12 +90,6 @@ export default function SaleDetailModal({ isOpen, onClose, sale }) {
 
     return (
         <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm duration-200">
-            {/* Componentes Ocultos para Impresión Local */}
-            <div className="hidden">
-                <Ticket ref={ticketRef} sale={sale} />
-                <InvoiceA4 ref={a4Ref} sale={sale} />
-            </div>
-
             <div className="animate-in zoom-in-95 w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white shadow-2xl duration-200">
                 <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
                     <div>

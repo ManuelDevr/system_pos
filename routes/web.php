@@ -70,6 +70,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:realizar_ventas')
         ->name('ventas.emitir');
 
+    Route::get('/ventas/{venta}/pdf', [SaleController::class, 'pdf'])
+        ->middleware('permission:realizar_ventas')
+        ->name('ventas.pdf');
+
     // Kardex
     Route::get('/inventario/kardex', [KardexController::class, 'index'])
         ->middleware('permission:ver_kardex')

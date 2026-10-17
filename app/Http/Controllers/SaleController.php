@@ -14,6 +14,8 @@ use App\Services\KardexService;
 use App\Support\FacturacionSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class SaleController extends Controller
@@ -349,5 +351,37 @@ class SaleController extends Controller
             'sunat_status' => $resultado['status'],
             'sunat_pdf_url' => $pdfUrl,
         ]);
+    }
+
+    public function pdf(Request $request, Venta $venta)
+    {
+        $format = $request->query('format', 'ticket-80');
+
+        if ($venta->sunat_pdf_url) {
+            $targetUrl = $venta->sunat_pdf_url;
+
+            // Ajustar formato en la URL
+            if (str_contains($targetUrl, 'format=')) {
+                $targetUrl = preg_replace('/format=[^&]+/', 'format=' . urlencode($format), $targetUrl);
+            } elseif (str_contains($targetUrl, '/getPDF/')) {
+                $apisunatFormat = strtoupper($format) === 'A4' ? 'A4' : 'ticket';
+                $targetUrl = preg_replace('/\/getPDF\/[^\/]+/', '/getPDF/' . $apisunatFormat, $targetUrl);
+            }
+
+            try {
+                $response = Http::timeout(10)->get($targetUrl);
+                if ($response->successful()) {
+                    return response($response->body(), 200, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="' . $venta->nro_comprobante . '-' . $format . '.pdf"',
+                        'Cache-Control' => 'no-cache, private',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::warning("Error al proxificar PDF de SUNAT: " . $e->getMessage());
+            }
+        }
+
+        return response()->json(['error' => 'PDF oficial no disponible'], 404);
     }
 }
