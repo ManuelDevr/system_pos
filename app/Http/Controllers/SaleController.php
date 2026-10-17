@@ -40,19 +40,11 @@ class SaleController extends Controller
         $serieBoleta = $config?->serie_boleta ?: 'B001';
         $serieFactura = $config?->serie_factura ?: 'F001';
 
-        $nextNumberFor = fn (string $serie) => (function () use ($serie) {
-            $lastNro = Venta::where('nro_comprobante', 'LIKE', $serie . '-%')
-                ->orderByRaw("CAST(SUBSTR(nro_comprobante, " . (strlen($serie) + 2) . ") AS INTEGER) DESC")
-                ->value('nro_comprobante');
-
-            return $lastNro ? ((int) substr($lastNro, strlen($serie) + 1)) + 1 : 1;
-        })();
-
         return Inertia::render('Sales/Checkout', [
+            // El correlativo lo asigna la Plataforma-Sunat: aquí solo se
+            // informa la serie configurada para mostrarla en la interfaz.
             'serie' => $serieBoleta,
-            'numero' => str_pad($nextNumberFor($serieBoleta), 6, '0', STR_PAD_LEFT),
             'serie_factura' => $serieFactura,
-            'numero_factura' => str_pad($nextNumberFor($serieFactura), 6, '0', STR_PAD_LEFT),
             'igv' => (float) ($config?->igv ?? 18.00),
             'metodos_pago' => $config?->metodos_pago ?? ['Efectivo', 'Transferencia', 'Yape', 'Plin', 'BCP'],
             'productos' => Producto::select('id', 'nombre', 'sku', 'codigo_barras', 'stock', 'precio_venta', 'unidad_medida', 'marca_id', 'imagen_url')
@@ -132,20 +124,10 @@ class SaleController extends Controller
                 ];
             }
 
-            // Número de comprobante secuencial según tipo y serie (B001 boleta, F001 factura)
+            // El correlativo del comprobante lo asigna la Plataforma-Sunat.
+            // El POS solo registra la venta y emite contra la API configurada.
             $tipoComprobante = $request->tipo_comprobante ?? 'Boleta';
             $config = Configuracion::first();
-            $serie = match ($tipoComprobante) {
-                'Factura' => $config?->serie_factura ?: 'F001',
-                default => $config?->serie_boleta ?: 'B001',
-            };
-            $lastNro = Venta::lockForUpdate()
-                ->where('nro_comprobante', 'LIKE', $serie . '-%')
-                ->orderByRaw("CAST(SUBSTR(nro_comprobante, " . (strlen($serie) + 2) . ") AS INTEGER) DESC")
-                ->value('nro_comprobante');
-
-            $nextNum = $lastNro ? ((int) substr($lastNro, strlen($serie) + 1)) + 1 : 1;
-            $nro_comprobante = $serie . '-' . str_pad($nextNum, 6, '0', STR_PAD_LEFT);
 
             $igvRate = (float) ($config?->igv ?? 18.00);
             $baseImponible = round($totalBackend / (1 + $igvRate / 100), 2);
@@ -164,7 +146,7 @@ class SaleController extends Controller
                 'cliente_tipo_doc' => $request->cliente_tipo_doc,
                 'cliente_documento' => $request->cliente_documento,
                 'cliente_nombre' => $request->cliente_nombre,
-                'nro_comprobante' => $nro_comprobante,
+                // nro_comprobante queda null: lo asigna la Plataforma-Sunat al emitir.
             ]);
 
             foreach ($itemsData as $data) {
@@ -185,7 +167,7 @@ class SaleController extends Controller
                     $data['producto_model'],
                     'SALIDA',
                     $data['cantidad_base'],
-                    'Venta: ' . $nro_comprobante,
+                    'Venta: ' . ('Venta #' . $venta->id),
                     'Venta',
                     $venta->id
                 );
@@ -202,45 +184,79 @@ class SaleController extends Controller
             $tipoDoc = $tipoDocMap[$tipoComprobante] ?? null;
             $rucCliente = $venta->documento_cliente;
 
-            if ($request->boolean('enviar_sunat') && $tipoDoc) {
+            if (true && $tipoDoc) {
                 $provider = FacturacionFactory::make();
 
+                $sunat = [
+                    'status' => null,
+                    'document_id' => null,
+                    'pdf_url' => null,
+                    'message' => null,
+                ];
+
                 if (! $provider->isConfigured()) {
+                    $sunat['status'] = 'ERROR';
                     $sunat['message'] = FacturacionSettings::isPlataforma()
                         ? 'Plataforma SUNAT no configurada (Configuración del Sistema).'
                         : 'APISUNAT no configurado (Configuración del Sistema).';
                 } elseif ($tipoDoc === '01' && strlen($rucCliente) !== 11) {
+                    $sunat['status'] = 'ERROR';
                     $sunat['message'] = 'Para emitir Factura, el cliente debe tener RUC (11 dígitos).';
                 } elseif ($tipoDoc === '03' && $rucCliente !== '' && ! in_array(strlen($rucCliente), [8, 11])) {
+                    $sunat['status'] = 'ERROR';
                     $sunat['message'] = 'El cliente debe tener DNI (8) o RUC (11) para emitir la Boleta.';
                 } else {
-                    $resultado = $provider->emitirComprobante($venta, $tipoDoc);
-                    $esError = ($resultado['status'] ?? '') === 'ERROR';
+                    try {
+                        $resultado = $provider->emitirComprobante($venta, $tipoDoc);
+                        $esError = ($resultado['status'] ?? '') === 'ERROR';
 
-                    $pdfUrl = null;
-                    if (isset($resultado['documentId'])) {
-                        $fileName = $resultado['fileName'] ?? $provider->buildFileName($venta, $tipoDoc);
-                        $pdfUrl = $provider->getPDFUrl($resultado['documentId'], $fileName);
+                        $pdfUrl = null;
+                        if (!$esError && isset($resultado['documentId'])) {
+                            $fileName = $resultado['fileName'] ?? $provider->buildFileName($venta, $tipoDoc);
+                            $pdfUrl = $provider->getPDFUrl($resultado['documentId'], $fileName);
+                        }
+
+                        $venta->update([
+                            'nro_comprobante' => $resultado['numero_completo'] ?? $venta->nro_comprobante,
+                            'sunat_envio' => ! $esError,
+                            'sunat_document_id' => $resultado['documentId'] ?? null,
+                            'sunat_status' => $resultado['status'] ?? 'ERROR',
+                            'sunat_pdf_url' => $pdfUrl,
+                            'sunat_cdr' => isset($resultado['error']) ? json_encode($resultado['error']) : null,
+                            'sunat_response_at' => now(),
+                        ]);
+
+                        $sunat = [
+                            'status' => $venta->sunat_status ?? ($resultado['status'] ?? 'ERROR'),
+                            'document_id' => $venta->sunat_document_id,
+                            'pdf_url' => $venta->sunat_pdf_url,
+                            'message' => ! $esError
+                                ? 'Comprobante enviado a SUNAT'
+                                : ($resultado['error']['message'] ?? 'Error al enviar a SUNAT'),
+                        ];
+                    } catch (\Throwable $e) {
+                        $sunat = [
+                            'status' => 'ERROR',
+                            'document_id' => null,
+                            'pdf_url' => null,
+                            'message' => 'Error al emitir: ' . $e->getMessage(),
+                        ];
                     }
 
-                    $venta->update([
-                        'sunat_envio' => ! $esError,
-                        'sunat_document_id' => $resultado['documentId'] ?? null,
-                        'sunat_status' => $resultado['status'] ?? 'ERROR',
-                        'sunat_pdf_url' => $pdfUrl,
-                        'sunat_cdr' => isset($resultado['error']) ? json_encode($resultado['error']) : null,
-                        'sunat_response_at' => now(),
-                    ]);
+                    DB::commit();
 
-                    $sunat = [
-                        'status' => $resultado['status'] ?? 'ERROR',
-                        'document_id' => $resultado['documentId'] ?? null,
-                        'pdf_url' => $pdfUrl,
-                        'message' => ! $esError
-                            ? 'Comprobante enviado a SUNAT'
-                            : ($resultado['error']['message'] ?? 'Error al enviar a SUNAT'),
-                    ];
+                    return redirect()->back()->with([
+                        'success' => 'Venta realizada y stock actualizado en Kardex.',
+                        'last_sale_id' => $venta->id,
+                        'sunat' => $sunat,
+                    ]);
                 }
+
+                return redirect()->back()->with([
+                    'success' => 'Venta realizada y stock actualizado en Kardex.',
+                    'last_sale_id' => $venta->id,
+                    'sunat' => $sunat,
+                ]);
             }
 
             DB::commit();
@@ -248,7 +264,6 @@ class SaleController extends Controller
             return redirect()->back()->with([
                 'success' => 'Venta realizada y stock actualizado en Kardex.',
                 'last_sale_id' => $venta->id,
-                'sunat' => $sunat,
             ]);
 
         } catch (\Exception $e) {
@@ -272,7 +287,7 @@ class SaleController extends Controller
 
                 if (!$producto) {
                     // Producto no encontrado ni en trash: registrar warning y continuar
-                    \Illuminate\Support\Facades\Log::warning("Anulación venta {$venta->nro_comprobante}: producto ID {$detalle->producto_id} no encontrado.");
+                    \Illuminate\Support\Facades\Log::warning('Anulación venta ' . ($venta->nro_comprobante ?? $venta->id) . ": producto ID {$detalle->producto_id} no encontrado.");
                     continue;
                 }
                 
@@ -280,9 +295,9 @@ class SaleController extends Controller
                 KardexService::registrarMovimiento(
                     $producto,
                     'ENTRADA',
-                    $detalle->cantidad_base,
-                    'Anulación Venta: ' . $venta->nro_comprobante,
-                    'Venta',
+                    $mov->cantidad_base,
+                    'Devolución de venta: ' . ($venta->nro_comprobante ?? 'Venta #' . $venta->id),
+                    'Devolución Venta',
                     $venta->id
                 );
             }

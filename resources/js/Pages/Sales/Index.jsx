@@ -49,7 +49,7 @@ const SaleRow = React.memo(({ sale, onOpenDetail }) => {
     <tr className={`hover:bg-slate-50/50 transition-colors ${isAnulado ? 'opacity-60' : ''}`}>
       <td className="p-4 whitespace-nowrap">
         <div className="flex flex-col">
-            <span className="font-bold text-slate-800 text-xs font-mono">{sale.nro_comprobante}</span>
+            <span className="font-bold text-slate-800 text-xs font-mono">{sale.nro_comprobante || `#${sale.id}`}</span>
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Ticket de Venta</span>
         </div>
       </td>

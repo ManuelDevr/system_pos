@@ -11,7 +11,9 @@ interface SunatProvider
     /**
      * Emitir comprobante (Factura '01' o Boleta '03').
      *
-     * @return array{status: string, documentId?: mixed, error?: array, fileName?: string}
+     * El correlativo lo asigna la Plataforma; el POS solo informa la serie.
+     *
+     * @return array{status: string, documentId?: mixed, numero_completo?: ?string, error?: array, fileName?: string}
      */
     public function emitirComprobante(Venta $venta, string $tipoDoc = '03'): array;
 

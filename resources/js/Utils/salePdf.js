@@ -104,9 +104,8 @@ export function nombrePdfVenta(sale, formato = 'ticket-80') {
 export function abrirVisorVenta(sale, config = null) {
     if (!sale) return;
 
-    const tipoDoc = (sale.nro_comprobante || '').startsWith('F')
-        ? 'Factura'
-        : 'Boleta';
+        const serie = (sale.nro_comprobante || '').toString().toUpperCase();
+        const tipoDoc = serie.startsWith('F') ? 'Factura' : 'Boleta';
     const titulo = `${tipoDoc} ${sale.nro_comprobante || ''}`;
     const cliente =
         sale.nombre_cliente || sale.cliente?.nombre || 'Clientes Varios';

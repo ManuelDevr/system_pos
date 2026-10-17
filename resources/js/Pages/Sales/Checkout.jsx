@@ -33,7 +33,7 @@ export default function Checkout({
     } = useCartStore();
 
     const [tipoComprobante, setTipoComprobante] = useState('Boleta');
-    const [enviarSunat, setEnviarSunat] = useState(true);
+    const [enviarSunat, setEnviarSunat] = useState(false);
     const [tipoDocumento, setTipoDocumento] = useState('DNI');
     const [numeroDocumento, setNumeroDocumento] = useState('');
     const [nombreCliente, setNombreCliente] = useState('');
@@ -91,7 +91,6 @@ export default function Checkout({
     const canConsultar = numeroDocumento.length === maxDocLength;
 
     const sunatHint = useMemo(() => {
-        if (!enviarSunat) return null;
         if (isFactura) {
             if (numeroDocumento.length !== 11) {
                 return 'La Factura requiere el RUC del cliente (11 dígitos)';
@@ -109,7 +108,7 @@ export default function Checkout({
             return 'Consulta el documento o ingresa el nombre del cliente';
         }
         return null;
-    }, [enviarSunat, isFactura, numeroDocumento, nombreCliente]);
+    }, [isFactura, numeroDocumento, nombreCliente]);
 
     // Consulta manual del documento: primero BD local (gratis), luego ApisPeru.
     const consultarDocumento = async () => {
@@ -179,6 +178,16 @@ export default function Checkout({
 
             // Abrir visor de PDF modal reutilizable
             abrirVisorVenta(flash.last_sale, config);
+
+            // Retroalimentar el resultado del envío a la Plataforma SUNAT
+            const sunat = flash?.sunat;
+            if (sunat?.message) {
+                if (sunat.status && sunat.status !== 'ERROR') {
+                    toast.success(sunat.message);
+                } else {
+                    toast.error(sunat.message);
+                }
+            }
         }
     }, [flash, config, clearCart]);
 
@@ -324,7 +333,7 @@ export default function Checkout({
             }
         }
 
-        if (enviarSunat && sunatHint) {
+        if (sunatHint) {
             toast.error(sunatHint);
             return;
         }
@@ -339,18 +348,18 @@ export default function Checkout({
                 descuento: descuentoTotal,
                 metodo_pago: paymentMethod,
                 tipo_comprobante: tipoComprobante,
-                enviar_sunat: enviarSunat,
-                cliente_tipo_doc: numeroDocumento ? tipoDocumento : null,
+                cliente_id: null,
+                cliente_tipo_doc: tipoDocumento,
                 cliente_documento: numeroDocumento || null,
-                cliente_nombre: nombreCliente.trim() || null,
-                items: cart.map((item) => ({
-                    producto_id: item.id,
-                    cantidad: item.quantity,
-                    precio_unitario: item.precio,
-                    unidad_id: item.unit_id,
+                cliente_nombre: nombreCliente.trim() || 'SIN NOMBRE',
+                items: items.map((item) => ({
+                    producto_id: item.producto_id,
+                    cantidad: item.cantidad,
+                    unidad_id: item.unidad_id,
                     conversion_id: item.conversion_id,
-                    descuento: item.discount || 0,
+                    descuento: item.descuento,
                 })),
+                enviar_sunat: true,
             },
             {
                 onSuccess: () => toast.success('Venta registrada'),
@@ -393,15 +402,15 @@ export default function Checkout({
                     >
                         <Plus size={16} /> Nueva Venta
                     </button>
-                    {sale && (
-                        <button
-                            type="button"
-                            onClick={() => abrirVisorVenta(sale, config)}
-                            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
-                        >
-                            Ver Comprobante ({sale.nro_comprobante})
-                        </button>
-                    )}
+                        {sale && (
+                            <button
+                                type="button"
+                                onClick={() => abrirVisorVenta(sale, config)}
+                                className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
+                            >
+                                Ver Comprobante ({sale.nro_comprobante ?? `Venta #${sale.id}`})
+                            </button>
+                        )}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <Sparkles size={20} className="text-violet-600" />
@@ -419,9 +428,9 @@ export default function Checkout({
                             {serieActual}
                         </span>
                         <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-600">
-                            Nº{' '}
+                            N°{' '}
                             <span className="text-slate-800">
-                                {numeroActual}
+                                {isFactura ? (serie_factura ? '' : '') : (serie ? '' : '')}
                             </span>
                         </span>
                         <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">
@@ -473,15 +482,14 @@ export default function Checkout({
                                 docOrigen={docOrigen}
                                 consultarDocumento={consultarDocumento}
                                 canConsultar={canConsultar}
-                                disabled={
-                                    cart.length === 0 ||
-                                    (paymentMethod === 'Efectivo' &&
-                                        !montoValido)
-                                }
-                                onPay={handlePay}
-                                enviarSunat={enviarSunat}
-                                setEnviarSunat={setEnviarSunat}
-                                sunatHint={sunatHint}
+                                 disabled={
+                                     cart.length === 0 ||
+                                     (paymentMethod === 'Efectivo' &&
+                                         !montoValido) ||
+                                     sunatHint
+                                 }
+                                 onPay={handlePay}
+                            sunatHint={sunatHint}
                             />
                         </div>
 

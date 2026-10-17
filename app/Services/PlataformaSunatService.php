@@ -48,8 +48,9 @@ class PlataformaSunatService implements SunatProvider
             ];
         }
 
-        [$serie, $numero] = array_pad(explode('-', (string) $venta->nro_comprobante), 2, '');
-        $correlativo = (int) ltrim($numero, '0');
+        // El correlativo lo asigna la Plataforma (la empresa ya tiene su
+        // numeración). El POS solo informa la serie del tipo de documento.
+        $serie = $this->resolveSerie($tipoDoc);
 
         $docType = $this->getCustomerDocType($venta->documento_cliente);
 
@@ -78,7 +79,6 @@ class PlataformaSunatService implements SunatProvider
 
         $payload = [
             'serie' => $serie,
-            'correlativo' => $correlativo,
             'fecha_emision' => $venta->created_at->format('Y-m-d'),
             'tipo_moneda' => 'PEN',
             'forma_pago' => 'Contado',
@@ -129,9 +129,25 @@ class PlataformaSunatService implements SunatProvider
                 ];
             }
 
+            // La Plataforma asigna el correlativo: adoptamos su número oficial.
+            $numeroCompleto = data_get($data, 'datos.numero_completo');
+            $seriePlataforma = data_get($data, 'datos.serie', $serie);
+            $correlativoPlataforma = data_get($data, 'datos.correlativo');
+
+            if (! $numeroCompleto && $seriePlataforma && $correlativoPlataforma !== null) {
+                $numeroCompleto = $seriePlataforma . '-' . str_pad((int) $correlativoPlataforma, 8, '0', STR_PAD_LEFT);
+            }
+
+            if ($numeroCompleto) {
+                $venta->nro_comprobante = $numeroCompleto;
+            }
+
             return [
                 'status' => 'OK',
                 'documentId' => $documentId,
+                'numero_completo' => $numeroCompleto,
+                'serie' => $seriePlataforma,
+                'correlativo' => $correlativoPlataforma,
                 'fileName' => $this->buildFileName($venta, $tipoDoc),
                 'plataforma' => data_get($data, 'datos'),
             ];
@@ -228,7 +244,8 @@ class PlataformaSunatService implements SunatProvider
         $config = Configuracion::first();
         $ruc = str_pad((string) ($config?->ruc ?? '00000000000'), 11, '0', STR_PAD_LEFT);
 
-        [$serie, $numero] = explode('-', (string) $venta->nro_comprobante);
+        [$serie, $numero] = array_pad(explode('-', (string) $venta->nro_comprobante), 2, '');
+        $serie = $serie ?: $this->resolveSerie($tipoDoc);
         $correlativo = str_pad((int) $numero, 8, '0', STR_PAD_LEFT);
 
         return "{$ruc}-{$tipoDoc}-{$serie}-{$correlativo}";
@@ -236,9 +253,9 @@ class PlataformaSunatService implements SunatProvider
 
     public function buildDocumentId(Venta $venta): string
     {
-        [$serie, $numero] = explode('-', (string) $venta->nro_comprobante);
+        [$serie, $numero] = array_pad(explode('-', (string) $venta->nro_comprobante), 2, '');
 
-        return "{$serie}-" . str_pad((int) $numero, 8, '0', STR_PAD_LEFT);
+        return ($serie ?: 'B001') . '-' . str_pad((int) $numero, 8, '0', STR_PAD_LEFT);
     }
 
     public function getCustomerDocType(?string $rucDni): string
@@ -259,6 +276,19 @@ class PlataformaSunatService implements SunatProvider
     // -------------------------------------------------------------------------
     // Helpers internos
     // -------------------------------------------------------------------------
+
+    /**
+     * Serie configurada para el tipo de documento (01 Factura / 03 Boleta).
+     * El correlativo NO se genera en el POS: lo asigna la Plataforma.
+     */
+    private function resolveSerie(string $tipoDoc): string
+    {
+        $config = Configuracion::first();
+
+        return $tipoDoc === '01'
+            ? (string) ($config?->serie_factura ?: 'F001')
+            : (string) ($config?->serie_boleta ?: 'B001');
+    }
 
     /**
      * Resolver 01/03 desde la serie de la venta (F…→factura, B…→boleta).

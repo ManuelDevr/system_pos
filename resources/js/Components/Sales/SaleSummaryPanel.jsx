@@ -3,10 +3,7 @@ import {
     CheckCircle,
     CreditCard,
     Landmark,
-    Loader2,
-    Search,
-    Send,
-    Smartphone,
+    QrCode,
     User,
 } from 'lucide-react';
 
@@ -38,9 +35,6 @@ export default function SaleSummaryPanel({
     canConsultar,
     disabled,
     onPay,
-    enviarSunat,
-    setEnviarSunat,
-    sunatHint,
 }) {
     const isFactura = tipoComprobante === 'Factura';
     const maxDocLength = tipoDocumento === 'RUC' ? 11 : 8;
@@ -218,49 +212,6 @@ export default function SaleSummaryPanel({
                             );
                         })}
                     </div>
-                </div>
-
-                {/* Envío a SUNAT */}
-                <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                                <Send size={15} />
-                            </span>
-                            <div>
-                                <p className="text-sm font-black text-slate-800">
-                                    Emitir a SUNAT
-                                </p>
-                                <p className="text-[10px] font-bold text-slate-400">
-                                    Boleta (03) / Factura (01)
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={enviarSunat}
-                            onClick={() => setEnviarSunat(!enviarSunat)}
-                            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                                enviarSunat ? 'bg-emerald-500' : 'bg-slate-300'
-                            }`}
-                        >
-                            <span
-                                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                                    enviarSunat ? 'left-6' : 'left-1'
-                                }`}
-                            />
-                        </button>
-                    </div>
-                    {enviarSunat && sunatHint && (
-                        <p className="mt-3 flex items-start gap-1.5 text-[11px] font-bold text-amber-700">
-                            <CheckCircle
-                                size={13}
-                                className="mt-0.5 shrink-0"
-                            />
-                            {sunatHint}
-                        </p>
-                    )}
                 </div>
 
                 {/* Botón Realizar Venta */}
