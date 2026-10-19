@@ -55,12 +55,13 @@ export const useCartStore = create(
             },
 
             updateQuantity: (id, conversion_id, quantity) => {
-                if (quantity < 1) return;
+                const qty = parseFloat(quantity);
+                if (Number.isNaN(qty) || qty <= 0) return;
                 const items = get().items;
                 set({
                     items: items.map((item) =>
                         item.id === id && item.conversion_id === conversion_id
-                            ? { ...item, quantity }
+                            ? { ...item, quantity: qty }
                             : item,
                     ),
                 });

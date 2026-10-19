@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Contracts\SunatProvider;
 use App\Models\Configuracion;
+use App\Models\GuiaRemision;
+use App\Models\NotaDebito;
 use App\Models\Venta;
 use App\Support\FacturacionSettings;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -169,6 +172,11 @@ class PlataformaSunatService implements SunatProvider
         $tipoDoc = $this->resolveDocType($venta);
         $endpoint = $tipoDoc === '01' ? 'facturas' : 'boletas';
 
+        return $this->getEstadoDocumento($endpoint, $documentId);
+    }
+
+    public function getEstadoDocumento(string $recurso, string $documentId): array
+    {
         try {
             $response = Http::timeout(20)
                 ->withHeaders([
@@ -176,7 +184,7 @@ class PlataformaSunatService implements SunatProvider
                     'X-Api-Key' => $this->apiKey,
                     'X-Api-Secret' => $this->apiSecret,
                 ])
-                ->get("{$this->baseUrl}/{$endpoint}/{$documentId}");
+                ->get("{$this->baseUrl}/{$recurso}/{$documentId}");
 
             if ($response->failed()) {
                 return [
@@ -208,7 +216,7 @@ class PlataformaSunatService implements SunatProvider
 
             return [
                 'status' => $this->normalizeStatus($estadoRaw),
-                'type' => $tipoDoc,
+                'type' => $recurso,
                 'fileName' => $doc['numero_completo'] ?? null,
                 'cdr' => $sunat['hash_cpe'] ?? null,
                 'faults' => $faults,
@@ -273,9 +281,255 @@ class PlataformaSunatService implements SunatProvider
         };
     }
 
+    public function emitirNotaDebito(NotaDebito $nota): array
+    {
+        if (! $this->isConfigured()) {
+            return $this->notConfigured();
+        }
+
+        $nota->loadMissing(['venta.cliente']);
+        $venta = $nota->venta;
+        $nroComprobante = (string) ($venta?->nro_comprobante ?? '');
+
+        [$serieAfectada, $correlativo] = array_pad(explode('-', $nroComprobante), 2, '');
+
+        if (! $venta || $serieAfectada === '') {
+            return [
+                'status' => 'ERROR',
+                'error' => ['message' => 'La venta no tiene un comprobante emitido ante SUNAT.'],
+            ];
+        }
+
+        $tipoAfectado = str_starts_with(strtoupper($serieAfectada), 'F') ? '01' : '03';
+        $config = Configuracion::first();
+        $serie = $nota->serie
+            ?: (string) ($config?->serie_nota_debito ?: ($tipoAfectado === '01' ? 'FD01' : 'BD01'));
+
+        $docType = $this->getCustomerDocType($venta->documento_cliente);
+        $cliente = [
+            'tipo_doc' => $docType,
+            'num_doc' => $venta->documento_cliente !== '' ? $venta->documento_cliente : '0',
+            'razon_social' => $venta->nombre_cliente ?: 'CLIENTE VARIOS',
+        ];
+
+        if ($venta->cliente?->direccion) {
+            $cliente['direccion'] = $venta->cliente->direccion;
+        }
+
+        $payload = [
+            'serie' => $serie,
+            'fecha_emision' => ($nota->created_at ?? now())->format('Y-m-d'),
+            'tipo_moneda' => 'PEN',
+            'cliente' => $cliente,
+            'doc_afectado_tipo' => $tipoAfectado,
+            'doc_afectado_serie' => $serieAfectada,
+            'doc_afectado_correlativo' => str_pad((string) $correlativo, 8, '0', STR_PAD_LEFT),
+            'cod_motivo' => $nota->motivo_codigo,
+            'des_motivo' => $nota->motivo_descripcion,
+            'items' => [[
+                'descripcion' => $nota->motivo_descripcion,
+                'unidad' => 'ZZ',
+                'cantidad' => 1,
+                'precio_unitario' => (float) $nota->total,
+                'tip_afe_igv' => '10',
+            ]],
+        ];
+
+        return $this->emitirDocumento('notas-debito', $payload, $serie);
+    }
+
+    public function emitirGuiaRemision(GuiaRemision $guia): array
+    {
+        if (! $this->isConfigured()) {
+            return $this->notConfigured();
+        }
+
+        $payload = [
+            'serie' => $guia->serie,
+            'fecha_emision' => $guia->fecha_emision->format('Y-m-d'),
+            'observacion' => $guia->observacion,
+            'destinatario' => [
+                'tipo_doc' => $guia->destinatario_tipo_doc,
+                'num_doc' => $guia->destinatario_num_doc,
+                'razon_social' => $guia->destinatario_razon_social,
+            ],
+            'cod_traslado' => $guia->motivo_traslado,
+            'mod_traslado' => $guia->modalidad,
+            'fecha_traslado' => $guia->fecha_traslado->format('Y-m-d'),
+            'peso_total' => (float) $guia->peso_total,
+            'und_peso_total' => $guia->und_peso_total,
+            'num_bultos' => $guia->num_bultos,
+            'partida_ubigeo' => $guia->partida_ubigeo,
+            'partida_direccion' => $guia->partida_direccion,
+            'llegada_ubigeo' => $guia->llegada_ubigeo,
+            'llegada_direccion' => $guia->llegada_direccion,
+            'items' => $guia->items ?: [],
+        ];
+
+        if ($guia->modalidad === '01') {
+            $payload['transportista'] = [
+                'tipo_doc' => $guia->transportista_tipo_doc ?: '6',
+                'num_doc' => $guia->transportista_num_doc,
+                'razon_social' => $guia->transportista_razon_social,
+                'nro_mtc' => $guia->transportista_nro_mtc,
+            ];
+        } else {
+            $payload['vehiculo'] = ['placa' => $guia->vehiculo_placa];
+
+            if ($guia->conductor_num_doc) {
+                $payload['conductor'] = [
+                    'tipo_doc' => $guia->conductor_tipo_doc ?: '1',
+                    'num_doc' => $guia->conductor_num_doc,
+                    'tipo' => 'Principal',
+                    'nombres' => $guia->conductor_nombres,
+                    'apellidos' => $guia->conductor_apellidos,
+                    'licencia' => $guia->conductor_licencia,
+                ];
+            }
+        }
+
+        return $this->emitirDocumento('guias-remision', $payload, $guia->serie);
+    }
+
+    public function reenviar(string $recurso, string $documentId): array
+    {
+        if (! $this->isConfigured()) {
+            return $this->notConfigured();
+        }
+
+        try {
+            $response = $this->client()->post("{$this->baseUrl}/{$recurso}/{$documentId}/reenviar");
+            $data = $response->json();
+
+            if ($response->failed()) {
+                return [
+                    'status' => 'ERROR',
+                    'error' => [
+                        'http_status' => $response->status(),
+                        'message' => $data['mensaje'] ?? 'Error HTTP al reenviar el documento',
+                        'detail' => $data['errores'] ?? null,
+                    ],
+                ];
+            }
+
+            if (($data['estado'] ?? '') === 'error') {
+                return [
+                    'status' => 'ERROR',
+                    'error' => ['message' => $data['mensaje'] ?? 'La Plataforma SUNAT rechazo el reenvio.'],
+                ];
+            }
+
+            return [
+                'status' => 'OK',
+                'estado' => $this->normalizeStatus((string) data_get($data, 'datos.sunat.estado', 'pendiente')),
+                'datos' => (array) data_get($data, 'datos', []),
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Plataforma SUNAT reenvio exception', [
+                'recurso' => $recurso,
+                'document_id' => $documentId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['status' => 'ERROR', 'error' => ['message' => $e->getMessage()]];
+        }
+    }
+
+    public function documentoPDFUrl(string $recurso, string $documentId, string $format = ''): string
+    {
+        $format = $format ?: (string) config('facturacion.default_pdf_format', 'ticket-80');
+
+        $query = http_build_query(array_filter([
+            'format' => $format,
+            'api_key' => $this->apiKey,
+            'api_secret' => $this->apiSecret,
+        ]));
+
+        return "{$this->baseUrl}/{$recurso}/{$documentId}/pdf?{$query}";
+    }
+
     // -------------------------------------------------------------------------
     // Helpers internos
     // -------------------------------------------------------------------------
+
+    private function client(): PendingRequest
+    {
+        return Http::timeout(45)->withHeaders([
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+            'X-Api-Key' => $this->apiKey,
+            'X-Api-Secret' => $this->apiSecret,
+        ]);
+    }
+
+    private function notConfigured(): array
+    {
+        return [
+            'status' => 'ERROR',
+            'error' => ['message' => 'La Plataforma SUNAT no esta configurada (Configuracion del Sistema).'],
+        ];
+    }
+
+    /**
+     * Enviar un documento a la plataforma y normalizar la respuesta.
+     */
+    private function emitirDocumento(string $recurso, array $payload, ?string $serieEnviada = null): array
+    {
+        try {
+            $response = $this->client()->post("{$this->baseUrl}/{$recurso}", $payload);
+            $data = $response->json();
+
+            if ($response->failed()) {
+                Log::error("Plataforma SUNAT emision {$recurso} HTTP error", [
+                    'status' => $response->status(),
+                    'body' => $data ?? $response->body(),
+                ]);
+
+                return [
+                    'status' => 'ERROR',
+                    'error' => [
+                        'http_status' => $response->status(),
+                        'message' => $data['mensaje'] ?? 'Error HTTP al conectar con la Plataforma SUNAT',
+                        'detail' => $data['errores'] ?? null,
+                        'validation' => $data['errores'] ?? null,
+                    ],
+                ];
+            }
+
+            $documentId = data_get($data, 'datos.id');
+
+            if (! $documentId) {
+                return [
+                    'status' => 'ERROR',
+                    'error' => ['message' => $data['mensaje'] ?? 'La Plataforma SUNAT respondio sin id de documento.'],
+                ];
+            }
+
+            $numeroCompleto = data_get($data, 'datos.numero_completo');
+            $serie = data_get($data, 'datos.serie', $serieEnviada);
+            $correlativo = data_get($data, 'datos.correlativo');
+
+            if (! $numeroCompleto && $serie && $correlativo !== null) {
+                $numeroCompleto = $serie.'-'.str_pad((int) $correlativo, 8, '0', STR_PAD_LEFT);
+            }
+
+            return [
+                'status' => 'OK',
+                'documentId' => $documentId,
+                'numero_completo' => $numeroCompleto,
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'estado' => $this->normalizeStatus((string) data_get($data, 'datos.sunat.estado', 'pendiente')),
+                'plataforma' => (array) data_get($data, 'datos', []),
+            ];
+        } catch (\Throwable $e) {
+            Log::critical("Plataforma SUNAT emision {$recurso} exception", [
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['status' => 'ERROR', 'error' => ['message' => $e->getMessage()]];
+        }
+    }
 
     /**
      * Serie configurada para el tipo de documento (01 Factura / 03 Boleta).
@@ -370,7 +624,7 @@ class PlataformaSunatService implements SunatProvider
 
             $unidad = 'NIU';
             if ($detalle->unidad) {
-                $unidad = $detalle->unidad->sunat_code;
+                $unidad = $detalle->unidad->codigo_sunat ?? 'NIU';
             }
 
             $items[] = [

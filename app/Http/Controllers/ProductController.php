@@ -7,6 +7,8 @@ use App\Imports\ProductsImport;
 use App\Models\Producto;
 use App\Models\Categoria;
 use App\Models\Marca;
+use App\Models\StockSucursal;
+use App\Models\Sucursal;
 use App\Models\Unidad;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -66,7 +68,17 @@ class ProductController extends Controller
         $data['imagenes'] = array_values(array_slice($imagenes, 0, 6));
         $data['imagen_url'] = $data['imagenes'][0] ?? null;
 
-        Producto::create($data);
+        $producto = Producto::create($data);
+
+        $sucursalPrincipal = Sucursal::defaultId();
+        $sucursales = Sucursal::where('activo', true)->pluck('id');
+
+        foreach ($sucursales as $sucursalId) {
+            StockSucursal::updateOrCreate(
+                ['sucursal_id' => $sucursalId, 'producto_id' => $producto->id],
+                ['stock' => $sucursalId === $sucursalPrincipal ? (float) $producto->stock : 0]
+            );
+        }
 
         return redirect()->back()->with('success', 'Producto creado correctamente.');
     }
@@ -98,7 +110,19 @@ class ProductController extends Controller
         $data['imagenes'] = array_values(array_slice($imagenes, 0, 6));
         $data['imagen_url'] = $data['imagenes'][0] ?? null;
 
+        $stockAnterior = (float) $producto->stock;
         $producto->update($data);
+
+        if (($sucursalId = Sucursal::defaultId()) && array_key_exists('stock', $data)) {
+            $stockSucursal = StockSucursal::firstOrCreate(
+                ['sucursal_id' => $sucursalId, 'producto_id' => $producto->id],
+                ['stock' => $stockAnterior]
+            );
+
+            $delta = (float) $producto->stock - $stockAnterior;
+            $stockSucursal->stock = max(0, (float) $stockSucursal->stock + $delta);
+            $stockSucursal->save();
+        }
 
         return redirect()->back()->with('success', 'Producto actualizado.');
     }

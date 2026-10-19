@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\CajaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SucursalController;
@@ -16,10 +17,13 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\NotaCreditoController;
+use App\Http\Controllers\DebitNoteController;
+use App\Http\Controllers\DispatchGuideController;
 use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PersonalController;
+use App\Http\Controllers\TransferController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -70,14 +74,63 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:realizar_ventas')
         ->name('ventas.emitir');
 
+    Route::post('/ventas/{venta}/reenviar', [SaleController::class, 'reenviar'])
+        ->middleware('permission:realizar_ventas')
+        ->name('ventas.reenviar');
+
     Route::get('/ventas/{venta}/pdf', [SaleController::class, 'pdf'])
         ->middleware('permission:realizar_ventas')
         ->name('ventas.pdf');
+
+    // Caja y Turnos
+    Route::get('/caja', [CajaController::class, 'index'])
+        ->middleware('permission:abrir_caja')
+        ->name('caja.index');
+    Route::post('/caja/abrir', [CajaController::class, 'abrir'])
+        ->middleware('permission:abrir_caja')
+        ->name('caja.abrir');
+    Route::post('/caja/movimiento', [CajaController::class, 'movimiento'])
+        ->middleware('permission:abrir_caja')
+        ->name('caja.movimiento');
+    Route::post('/caja/cerrar', [CajaController::class, 'cerrar'])
+        ->middleware('permission:abrir_caja')
+        ->name('caja.cerrar');
+    Route::get('/caja/historial', [CajaController::class, 'historial'])
+        ->middleware('permission:ver_historial_ventas')
+        ->name('caja.historial');
+
+    // Guias de Remision (GRE Remitente - tipo 09)
+    Route::get('/guias-remision', [DispatchGuideController::class, 'index'])
+        ->middleware('permission:emitir_guia')
+        ->name('guias.index');
+    Route::get('/guias-remision/nueva', [DispatchGuideController::class, 'create'])
+        ->middleware('permission:emitir_guia')
+        ->name('guias.create');
+    Route::post('/guias-remision', [DispatchGuideController::class, 'store'])
+        ->middleware('permission:emitir_guia')
+        ->name('guias.store');
+    Route::post('/guias-remision/{guia}/estado', [DispatchGuideController::class, 'estado'])
+        ->middleware('permission:emitir_guia')
+        ->name('guias.estado');
+    Route::get('/guias-remision/{guia}/pdf', [DispatchGuideController::class, 'pdf'])
+        ->middleware('permission:emitir_guia')
+        ->name('guias.pdf');
 
     // Kardex
     Route::get('/inventario/kardex', [KardexController::class, 'index'])
         ->middleware('permission:ver_kardex')
         ->name('kardex.index');
+
+    // Transferencias entre sucursales
+    Route::get('/transferencias', [TransferController::class, 'index'])
+        ->middleware('permission:transferir_stock')
+        ->name('transferencias.index');
+    Route::get('/transferencias/nueva', [TransferController::class, 'create'])
+        ->middleware('permission:transferir_stock')
+        ->name('transferencias.create');
+    Route::post('/transferencias', [TransferController::class, 'store'])
+        ->middleware('permission:transferir_stock')
+        ->name('transferencias.store');
 
     // Mantenimiento de Inventario
     Route::get('/inventario/mantenimiento', [InventoryController::class, 'maintenance'])
@@ -110,6 +163,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reportes/rvie/export', [ReportController::class, 'exportRvie'])->middleware('permission:ver_reporte_rvie')->name('reportes.rvie.export');
         Route::get('/reportes/rce', [ReportController::class, 'rce'])->middleware('permission:ver_reporte_rce')->name('reportes.rce');
         Route::get('/reportes/rce/export', [ReportController::class, 'exportRce'])->middleware('permission:ver_reporte_rce')->name('reportes.rce.export');
+        Route::get('/reportes/utilidad', [ReportController::class, 'utilidad'])->middleware('permission:ver_utilidad')->name('reportes.utilidad');
+        Route::get('/reportes/utilidad/export', [ReportController::class, 'exportUtilidad'])->middleware('permission:ver_utilidad')->name('reportes.utilidad.export');
         
         // Proveedores
         Route::get('/proveedores', [ProveedorController::class, 'index'])->middleware('permission:gestionar_mantenimiento')->name('proveedores.index');
@@ -121,6 +176,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/notas-credito', [NotaCreditoController::class, 'index'])->middleware('permission:ver_historial_ventas')->name('notas-credito.index');
         Route::get('/notas-credito/nueva', [NotaCreditoController::class, 'create'])->middleware('permission:anular_ventas')->name('notas-credito.create');
         Route::post('/notas-credito', [NotaCreditoController::class, 'store'])->middleware('permission:anular_ventas')->name('notas-credito.store');
+
+        // Notas de Debito
+        Route::get('/notas-debito', [DebitNoteController::class, 'index'])->middleware('permission:ver_historial_ventas')->name('notas-debito.index');
+        Route::get('/notas-debito/nueva', [DebitNoteController::class, 'create'])->middleware('permission:anular_ventas')->name('notas-debito.create');
+        Route::post('/notas-debito', [DebitNoteController::class, 'store'])->middleware('permission:anular_ventas')->name('notas-debito.store');
+        Route::post('/notas-debito/{nota}/reenviar', [DebitNoteController::class, 'reenviar'])->middleware('permission:anular_ventas')->name('notas-debito.reenviar');
+        Route::get('/notas-debito/{nota}/pdf', [DebitNoteController::class, 'pdf'])->middleware('permission:ver_historial_ventas')->name('notas-debito.pdf');
 
         // Cotizaciones / Proformas
         Route::get('/cotizaciones', [CotizacionController::class, 'index'])->middleware('permission:gestionar_productos')->name('cotizaciones.index');

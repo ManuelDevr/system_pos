@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Producto;
+use App\Models\StockSucursal;
 use App\Models\Sucursal;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,7 +33,18 @@ class SucursalController extends Controller
             Sucursal::where('principal', true)->update(['principal' => false]);
         }
 
-        Sucursal::create($validated);
+        $sucursal = Sucursal::create($validated);
+
+        $now = now();
+        Producto::query()->select('id')->chunkById(500, function ($productos) use ($sucursal, $now) {
+            StockSucursal::insertOrIgnore($productos->map(fn ($producto) => [
+                'sucursal_id' => $sucursal->id,
+                'producto_id' => $producto->id,
+                'stock' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all());
+        });
 
         return redirect()->route('sucursales.index')->with('success', 'Sucursal agregada correctamente.');
     }

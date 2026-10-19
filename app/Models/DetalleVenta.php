@@ -17,11 +17,22 @@ class DetalleVenta extends Model
         'producto_id',
         'cantidad',
         'precio_unitario',
+        'costo_unitario',
         'subtotal',
         'descuento',
         'subtotal_descuento',
         'unidad_id',
         'cantidad_base',
+    ];
+
+    protected $casts = [
+        'cantidad' => 'decimal:4',
+        'cantidad_base' => 'decimal:4',
+        'costo_unitario' => 'decimal:4',
+        'precio_unitario' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'descuento' => 'decimal:2',
+        'subtotal_descuento' => 'decimal:2',
     ];
 
     public function venta(): BelongsTo

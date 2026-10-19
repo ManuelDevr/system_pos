@@ -2,6 +2,8 @@
 
 namespace App\Contracts;
 
+use App\Models\GuiaRemision;
+use App\Models\NotaDebito;
 use App\Models\Venta;
 
 interface SunatProvider
@@ -50,4 +52,37 @@ interface SunatProvider
      * @return string schemeID: '6'=RUC, '1'=DNI, '0'=Sin doc
      */
     public function getCustomerDocType(?string $rucDni): string;
+
+    /**
+     * Emitir una nota de debito (tipo 08) asociada a una venta ya emitida.
+     *
+     * @return array{status: string, documentId?: mixed, numero_completo?: ?string, error?: array}
+     */
+    public function emitirNotaDebito(NotaDebito $nota): array;
+
+    /**
+     * Emitir una guia de remision remitente (tipo 09).
+     *
+     * @return array{status: string, documentId?: mixed, numero_completo?: ?string, error?: array}
+     */
+    public function emitirGuiaRemision(GuiaRemision $guia): array;
+
+    /**
+     * Reenviar un documento existente a SUNAT.
+     *
+     * @param  string  $recurso  facturas | boletas | notas-debito | guias-remision
+     */
+    public function reenviar(string $recurso, string $documentId): array;
+
+    /**
+     * URL del PDF de un documento por recurso (facturas, boletas, ...).
+     */
+    public function documentoPDFUrl(string $recurso, string $documentId, string $format = ''): string;
+
+    /**
+     * Consultar el estado de un documento por recurso.
+     *
+     * @param  string  $recurso  facturas | boletas | notas-debito | guias-remision
+     */
+    public function getEstadoDocumento(string $recurso, string $documentId): array;
 }

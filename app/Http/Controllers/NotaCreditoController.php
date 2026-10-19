@@ -6,6 +6,7 @@ use App\Models\NotaCredito;
 use App\Models\Venta;
 use App\Models\Producto;
 use App\Services\KardexService;
+use App\Services\SequenceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -50,50 +51,53 @@ class NotaCreditoController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            $nota = DB::transaction(function () use ($venta, $validated) {
+                // Crear primero la nota para referenciarla en el Kardex.
+                $nota = NotaCredito::create([
+                    'venta_id' => $venta->id,
+                    'nro_comprobante' => SequenceService::next(NotaCredito::class, 'NC'),
+                    'motivo' => $validated['motivo'],
+                    'total' => $venta->total,
+                    'user_id' => auth()->id(),
+                ]);
 
-            // Restaurar stock de cada detalle
-            foreach ($venta->detalles as $detalle) {
-                $producto = Producto::lockForUpdate()->find($detalle->producto_id);
-                if ($producto) {
-                    KardexService::registrarMovimiento(
-                        $producto,
-                        'ENTRADA',
-                        $detalle->cantidad_base ?? $detalle->cantidad,
-                        "Nota Crédito Venta: {$venta->nro_comprobante}",
-                        'NOTA_CREDITO',
-                        null
-                    );
+                $motivo = 'Nota Crédito Venta: '.($venta->nro_comprobante ?? 'Venta #'.$venta->id);
+
+                foreach ($venta->detalles as $detalle) {
+                    $producto = Producto::withTrashed()->lockForUpdate()->find($detalle->producto_id);
+                    if ($producto) {
+                        KardexService::registrarMovimiento(
+                            $producto,
+                            'ENTRADA',
+                            $detalle->cantidad_base ?? $detalle->cantidad,
+                            $motivo,
+                            'NOTA_CREDITO',
+                            $nota->id,
+                            (float) $detalle->costo_unitario,
+                            $venta->sucursal_id
+                        );
+                    }
                 }
-            }
 
-            // Crear la nota de crédito
-            $nota = NotaCredito::create([
-                'venta_id' => $venta->id,
-                'nro_comprobante' => $this->getNextNumber(),
-                'motivo' => $validated['motivo'],
-                'total' => $venta->total,
-                'user_id' => auth()->id(),
-            ]);
+                // Marcar venta como anulada
+                $venta->estado = 'Anulado';
+                $venta->save();
 
-            // Marcar venta como anulada
-            $venta->estado = 'Anulado';
-            $venta->save();
-
-            DB::commit();
+                return $nota;
+            });
 
             return redirect()->route('notas-credito.index')
                 ->with('success', "Nota de Crédito {$nota->nro_comprobante} emitida correctamente.");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Error al emitir nota de crédito: ' . $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return redirect()->back()->withErrors(['error' => 'Error al emitir nota de crédito: '.$e->getMessage()]);
         }
     }
 
     private function getNextNumber(): string
     {
-        $last = NotaCredito::orderByDesc('id')->first();
-        $num = $last ? (int) substr($last->nro_comprobante, -6) + 1 : 1;
-        return 'NC' . str_pad($num, 6, '0', STR_PAD_LEFT);
+        $last = NotaCredito::orderByDesc('id')->value('nro_comprobante');
+        $num = $last ? ((int) substr($last, -6)) + 1 : 1;
+
+        return 'NC'.str_pad((string) $num, 6, '0', STR_PAD_LEFT);
     }
 }

@@ -13,6 +13,7 @@ class Venta extends Model
 
     protected $fillable = [
         'total',
+        'costo_total',
         'pagado_con',
         'vuelto',
         'descuento',
@@ -20,7 +21,9 @@ class Venta extends Model
         'igv',
         'metodo_pago',
         'nro_comprobante',
+        'tipo_comprobante',
         'estado',
+        'estado_pago',
         'sunat_envio',
         'sunat_document_id',
         'sunat_status',
@@ -28,6 +31,8 @@ class Venta extends Model
         'sunat_cdr',
         'sunat_response_at',
         'user_id',
+        'caja_id',
+        'sucursal_id',
         'cliente_id',
         'cliente_tipo_doc',
         'cliente_documento',
@@ -43,6 +48,13 @@ class Venta extends Model
     protected function casts(): array
     {
         return [
+            'total' => 'decimal:2',
+            'costo_total' => 'decimal:2',
+            'pagado_con' => 'decimal:2',
+            'vuelto' => 'decimal:2',
+            'descuento' => 'decimal:2',
+            'base_imponible' => 'decimal:2',
+            'igv' => 'decimal:2',
             'sunat_envio' => 'boolean',
             'sunat_response_at' => 'datetime',
         ];
@@ -53,6 +65,16 @@ class Venta extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function caja(): BelongsTo
+    {
+        return $this->belongsTo(Caja::class);
+    }
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
@@ -61,6 +83,16 @@ class Venta extends Model
     public function detalles(): HasMany
     {
         return $this->hasMany(DetalleVenta::class);
+    }
+
+    public function notasDebito(): HasMany
+    {
+        return $this->hasMany(NotaDebito::class);
+    }
+
+    public function guiasRemision(): HasMany
+    {
+        return $this->hasMany(GuiaRemision::class);
     }
 
     public function getNombreClienteAttribute(): string

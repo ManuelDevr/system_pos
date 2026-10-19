@@ -7,6 +7,7 @@ use App\Models\Marca;
 use App\Models\Unidad;
 use App\Models\Producto;
 use App\Models\Kardex;
+use App\Models\Sucursal;
 use App\Services\KardexService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -56,6 +57,7 @@ class InventoryController extends Controller
             'tipo' => 'required|in:ENTRADA,SALIDA',
             'cantidad' => 'required|numeric|min:0.01',
             'motivo' => 'required|string|max:255',
+            'sucursal_id' => 'nullable|exists:sucursales,id',
         ]);
 
         $producto = Producto::findOrFail($validated['producto_id']);
@@ -70,7 +72,9 @@ class InventoryController extends Controller
             $validated['cantidad'],
             $validated['motivo'],
             'AJUSTE',
-            null
+            null,
+            null,
+            $validated['sucursal_id'] ?? Sucursal::defaultId()
         );
 
         return redirect()->route('inventory.adjustments')->with('success', 'Ajuste de inventario registrado correctamente.');

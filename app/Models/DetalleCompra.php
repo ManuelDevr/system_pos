@@ -22,6 +22,12 @@ class DetalleCompra extends Model
         'subtotal',
     ];
 
+    protected $casts = [
+        'cantidad' => 'decimal:4',
+        'precio_compra' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+    ];
+
     public function compra(): BelongsTo
     {
         return $this->belongsTo(Compra::class);

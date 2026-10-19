@@ -7,6 +7,7 @@ use App\Exports\RceExport;
 use App\Models\Venta;
 use App\Models\Compra;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use OpenSpout\Writer\XLSX\Writer;
 use OpenSpout\Writer\CSV\Writer as CsvWriter;
@@ -123,6 +124,179 @@ class ReportController extends Controller
         }
 
         return $this->streamXlsx($headers, $data, $export->getFilename() . '.xlsx', $export->getTitle());
+    }
+
+    public function utilidad(Request $request)
+    {
+        [$desde, $hasta] = $this->periodo($request);
+
+        return Inertia::render('Reports/Utilidad', $this->buildUtilidad($desde, $hasta));
+    }
+
+    public function exportUtilidad(Request $request)
+    {
+        [$desde, $hasta] = $this->periodo($request);
+
+        $rows = $this->ventasDelPeriodo($desde, $hasta)
+            ->map(function (Venta $venta) {
+                $costo = $this->costoVenta($venta);
+
+                return [
+                    $venta->created_at->format('d/m/Y H:i'),
+                    $venta->nro_comprobante ?? 'Venta #'.$venta->id,
+                    number_format((float) $venta->total, 2, '.', ''),
+                    number_format($costo, 2, '.', ''),
+                    number_format((float) $venta->total - $costo, 2, '.', ''),
+                ];
+            })
+            ->all();
+
+        return $this->streamCsv(
+            ['Fecha', 'Comprobante', 'Ventas', 'Costo', 'Utilidad'],
+            $rows,
+            'utilidad_'.$desde->format('Ymd').'_'.$hasta->format('Ymd').'.csv'
+        );
+    }
+
+    private function periodo(Request $request): array
+    {
+        $request->validate([
+            'desde' => 'nullable|date',
+            'hasta' => 'nullable|date|after_or_equal:desde',
+        ]);
+
+        $desde = $request->filled('desde')
+            ? Carbon::parse($request->input('desde'))->startOfDay()
+            : now()->startOfMonth();
+
+        $hasta = $request->filled('hasta')
+            ? Carbon::parse($request->input('hasta'))->endOfDay()
+            : now()->endOfDay();
+
+        return [$desde, $hasta];
+    }
+
+    private function ventasDelPeriodo(Carbon $desde, Carbon $hasta)
+    {
+        return Venta::with(['detalles.producto', 'cliente'])
+            ->where('estado', '!=', 'Anulado')
+            ->whereBetween('created_at', [$desde, $hasta])
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    private function costoVenta(Venta $venta): float
+    {
+        if ($venta->costo_total !== null) {
+            return (float) $venta->costo_total;
+        }
+
+        return (float) $venta->detalles->sum(
+            fn ($detalle) => (float) ($detalle->costo_unitario ?? $detalle->producto?->precio_compra ?? 0)
+                * (float) $detalle->cantidad
+        );
+    }
+
+    private function buildUtilidad(Carbon $desde, Carbon $hasta): array
+    {
+        $ventas = $this->ventasDelPeriodo($desde, $hasta);
+
+        $totalVentas = 0.0;
+        $totalCosto = 0.0;
+        $porDia = [];
+        $porMetodo = [];
+        $productos = [];
+
+        foreach ($ventas as $venta) {
+            $ventaTotal = (float) $venta->total;
+            $costo = $this->costoVenta($venta);
+
+            $totalVentas += $ventaTotal;
+            $totalCosto += $costo;
+
+            $dia = $venta->created_at->format('Y-m-d');
+            $porDia[$dia]['dia'] = $dia;
+            $porDia[$dia]['ventas'] = ($porDia[$dia]['ventas'] ?? 0) + $ventaTotal;
+            $porDia[$dia]['costo'] = ($porDia[$dia]['costo'] ?? 0) + $costo;
+
+            $metodo = $venta->metodo_pago ?? 'Otro';
+            $porMetodo[$metodo]['metodo'] = $metodo;
+            $porMetodo[$metodo]['total'] = ($porMetodo[$metodo]['total'] ?? 0) + $ventaTotal;
+            $porMetodo[$metodo]['cantidad'] = ($porMetodo[$metodo]['cantidad'] ?? 0) + 1;
+
+            foreach ($venta->detalles as $detalle) {
+                $key = $detalle->producto_id ?? 'sin-producto';
+                $costoDetalle = (float) ($detalle->costo_unitario ?? $detalle->producto?->precio_compra ?? 0)
+                    * (float) $detalle->cantidad;
+                $ventaDetalle = (float) ($detalle->subtotal ?? $detalle->precio_unitario * $detalle->cantidad);
+
+                if (! isset($productos[$key])) {
+                    $productos[$key] = [
+                        'producto' => $detalle->producto?->nombre ?? 'Producto eliminado',
+                        'cantidad' => 0.0,
+                        'ventas' => 0.0,
+                        'costo' => 0.0,
+                    ];
+                }
+
+                $productos[$key]['cantidad'] += (float) $detalle->cantidad;
+                $productos[$key]['ventas'] += $ventaDetalle;
+                $productos[$key]['costo'] += $costoDetalle;
+            }
+        }
+
+        $utilidad = $totalVentas - $totalCosto;
+
+        $topProductos = collect($productos)
+            ->map(function (array $item) {
+                $item['utilidad'] = $item['ventas'] - $item['costo'];
+
+                return $item;
+            })
+            ->sortByDesc('utilidad')
+            ->values()
+            ->take(15)
+            ->map(fn (array $item) => [
+                'producto' => $item['producto'],
+                'cantidad' => round($item['cantidad'], 2),
+                'ventas' => round($item['ventas'], 2),
+                'costo' => round($item['costo'], 2),
+                'utilidad' => round($item['utilidad'], 2),
+            ])
+            ->all();
+
+        return [
+            'desde' => $desde->format('Y-m-d'),
+            'hasta' => $hasta->format('Y-m-d'),
+            'resumen' => [
+                'ventas' => round($totalVentas, 2),
+                'costo' => round($totalCosto, 2),
+                'utilidad' => round($utilidad, 2),
+                'margen' => $totalVentas > 0 ? round(($utilidad / $totalVentas) * 100, 2) : 0,
+                'transacciones' => $ventas->count(),
+                'ticket_promedio' => $ventas->count() > 0 ? round($totalVentas / $ventas->count(), 2) : 0,
+            ],
+            'por_dia' => collect($porDia)
+                ->map(fn (array $item) => [
+                    'dia' => $item['dia'],
+                    'ventas' => round($item['ventas'], 2),
+                    'costo' => round($item['costo'], 2),
+                    'utilidad' => round($item['ventas'] - $item['costo'], 2),
+                ])
+                ->sortBy('dia')
+                ->values()
+                ->all(),
+            'por_metodo' => collect($porMetodo)
+                ->map(fn (array $item) => [
+                    'metodo' => $item['metodo'],
+                    'total' => round($item['total'], 2),
+                    'cantidad' => $item['cantidad'],
+                ])
+                ->sortByDesc('total')
+                ->values()
+                ->all(),
+            'top_productos' => $topProductos,
+        ];
     }
 
     protected function streamCsv(array $headers, array $data, string $filename): StreamedResponse

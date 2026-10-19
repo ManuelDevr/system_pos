@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router } from '@inertiajs/react';
-import { Search, Filter, Eye, FileText, CheckCircle, XCircle, Clock, Calendar, Download, Trash2 } from 'lucide-react';
+import { Search, Filter, Eye, FileText, CheckCircle, XCircle, Clock, Calendar, Download, Trash2, RefreshCw } from 'lucide-react';
 import CommonModal from '@/Components/CommonModal';
 import SaleDetailModal from '@/Components/Sales/SaleDetailModal';
 import Pagination from '@/Components/Pagination';
@@ -85,13 +85,28 @@ const SaleRow = React.memo(({ sale, onOpenDetail }) => {
         <span className="text-sm font-black text-indigo-600">S/ {parseFloat(sale.total).toFixed(2)}</span>
       </td>
       <td className="p-4 whitespace-nowrap text-right">
-        <button 
-            onClick={() => onOpenDetail(sale)} 
-            className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
-            title="Ver Detalle"
-        >
-            <Eye size={18} />
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          {sale.sunat_document_id && ['ERROR', 'EXCEPCION'].includes(sale.sunat_status) && (
+            <button
+                onClick={() => router.post(route('ventas.reenviar', sale.id), {}, {
+                    preserveScroll: true,
+                    onSuccess: () => toast.success('Comprobante reenviado a SUNAT'),
+                    onError: (err) => toast.error(Object.values(err).join(', ')),
+                })}
+                className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all"
+                title="Reenviar a SUNAT"
+            >
+                <RefreshCw size={18} />
+            </button>
+          )}
+          <button 
+              onClick={() => onOpenDetail(sale)} 
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+              title="Ver Detalle"
+          >
+              <Eye size={18} />
+          </button>
+        </div>
       </td>
     </tr>
   );

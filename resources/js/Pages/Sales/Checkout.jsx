@@ -9,7 +9,7 @@ import { Package, Plus, ShoppingCart, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
-export default function Checkout({ igv, metodos_pago, productos }) {
+export default function Checkout({ igv, metodos_pago, productos, caja }) {
     const { config, flash } = usePage().props;
 
     const {
@@ -295,6 +295,10 @@ export default function Checkout({ igv, metodos_pago, productos }) {
     };
 
     const handlePay = () => {
+        if (!caja) {
+            toast.error('Debes abrir tu caja antes de vender');
+            return;
+        }
         if (cart.length === 0) {
             toast.error('El carrito está vacío');
             return;
@@ -406,6 +410,21 @@ export default function Checkout({ igv, metodos_pago, productos }) {
                     </div>
                 </div>
 
+                {!caja && (
+                    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm font-bold text-amber-800">
+                            No tienes una caja abierta. Debes abrir tu turno
+                            antes de registrar ventas.
+                        </p>
+                        <a
+                            href={route('caja.index')}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-black text-white transition-all hover:bg-amber-700 active:scale-95"
+                        >
+                            <Plus size={16} /> Abrir Caja
+                        </a>
+                    </div>
+                )}
+
                 {productos.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
                         <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-slate-200 bg-slate-50">
@@ -450,6 +469,7 @@ export default function Checkout({ igv, metodos_pago, productos }) {
                                 consultarDocumento={consultarDocumento}
                                 canConsultar={canConsultar}
                                 disabled={
+                                    !caja ||
                                     cart.length === 0 ||
                                     (paymentMethod === 'Efectivo' &&
                                         !montoValido) ||

@@ -19,10 +19,14 @@ class Producto extends Model
         'descripcion',
         'stock',
         'stock_minimo',
+        'punto_reorden',
         'precio_compra',
+        'costo_promedio',
+        'metodo_valoracion',
         'precio_venta',
         'margen_ganancia',
         'unidad_medida',
+        'es_fraccionable',
         'tasa_descuento',
         'estado',
         'categoria_id',
@@ -36,6 +40,13 @@ class Producto extends Model
     protected $casts = [
         'imagenes' => 'array',
         'mostrar_video' => 'boolean',
+        'es_fraccionable' => 'boolean',
+        'stock' => 'decimal:4',
+        'stock_minimo' => 'decimal:4',
+        'punto_reorden' => 'decimal:4',
+        'costo_promedio' => 'decimal:4',
+        'precio_compra' => 'decimal:2',
+        'precio_venta' => 'decimal:2',
     ];
 
     protected static function booted(): void
@@ -78,5 +89,10 @@ class Producto extends Model
     public function movimientosKardex(): HasMany
     {
         return $this->hasMany(Kardex::class);
+    }
+
+    public function stocksSucursal(): HasMany
+    {
+        return $this->hasMany(StockSucursal::class);
     }
 }

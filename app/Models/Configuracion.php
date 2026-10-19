@@ -27,6 +27,7 @@ class Configuracion extends Model
         'serie_boleta',
         'serie_nota_credito',
         'serie_nota_debito',
+        'serie_guia_remision',
         'igv',
         'facturacion_provider',
         'sunat_plataforma_base_url',

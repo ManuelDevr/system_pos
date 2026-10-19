@@ -148,22 +148,41 @@ export default function SaleDetailsPanel({
                                                     updateQty(
                                                         item.id,
                                                         item.conversion_id,
-                                                        item.quantity - 1,
+                                                        Math.max(
+                                                            0.01,
+                                                            +(
+                                                                item.quantity -
+                                                                1
+                                                            ).toFixed(2),
+                                                        ),
                                                     )
                                                 }
                                                 className="p-1.5 text-slate-500 hover:text-violet-600"
                                             >
                                                 <Minus size={13} />
                                             </button>
-                                            <span className="w-6 text-center text-sm font-black text-slate-800">
-                                                {item.quantity}
-                                            </span>
+                                            <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={item.quantity}
+                                                onChange={(e) =>
+                                                    updateQty(
+                                                        item.id,
+                                                        item.conversion_id,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-14 rounded border border-slate-200 py-0.5 text-center text-sm font-black text-slate-800 [appearance:textfield] focus:outline-none focus:ring-2 focus:ring-violet-200 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            />
                                             <button
                                                 onClick={() =>
                                                     updateQty(
                                                         item.id,
                                                         item.conversion_id,
-                                                        item.quantity + 1,
+                                                        +(
+                                                            item.quantity + 1
+                                                        ).toFixed(2),
                                                     )
                                                 }
                                                 className="p-1.5 text-slate-500 hover:text-violet-600"
