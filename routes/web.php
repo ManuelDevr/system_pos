@@ -24,6 +24,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\TransferController;
+use App\Http\Controllers\TiendaController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -245,6 +246,16 @@ Route::middleware(['auth'])->group(function () {
         
         Route::get('/configuracion/privilegios', [PermissionController::class, 'index'])->middleware('permission:configurar_privilegios')->name('privilegios.index');
         Route::post('/configuracion/privilegios', [PermissionController::class, 'update'])->middleware('permission:configurar_privilegios')->name('privilegios.update');
+
+        // Gestión de la Tienda Web
+        Route::get('/tienda', [TiendaController::class, 'index'])->middleware('permission:gestionar_tienda')->name('tienda.index');
+        Route::put('/tienda/productos/{producto}', [TiendaController::class, 'updateProducto'])->middleware('permission:gestionar_tienda')->name('tienda.productos.update');
+        Route::post('/tienda/productos/bulk', [TiendaController::class, 'bulkProductos'])->middleware('permission:gestionar_tienda')->name('tienda.productos.bulk');
+        Route::put('/tienda/categorias/{categoria}', [TiendaController::class, 'updateCategoria'])->middleware('permission:gestionar_tienda')->name('tienda.categorias.update');
+        Route::post('/tienda/sync/productos', [TiendaController::class, 'syncProducts'])->middleware('permission:gestionar_tienda')->name('tienda.sync.productos');
+        Route::post('/tienda/sync/categorias', [TiendaController::class, 'syncCategories'])->middleware('permission:gestionar_tienda')->name('tienda.sync.categorias');
+        Route::post('/tienda/test-connection', [TiendaController::class, 'testConnection'])->middleware('permission:gestionar_tienda')->name('tienda.test-connection');
+        Route::post('/tienda/reintentar', [TiendaController::class, 'retryFailed'])->middleware('permission:gestionar_tienda')->name('tienda.reintentar');
     });
 
     // Perfil

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Producto;
+use App\Models\SyncLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\RequestException;
@@ -51,17 +52,50 @@ class SyncProductWebhookJob implements ShouldQueue
             return;
         }
 
-        $response = Http::timeout($this->timeout)
-            ->withToken(config('sync.webhook_token'))
-            ->acceptJson()
-            ->asJson()
-            ->post($url, $this->payload);
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withToken(config('sync.webhook_token'))
+                ->acceptJson()
+                ->asJson()
+                ->post($url, $this->payload);
 
-        if ($response->failed()) {
-            Log::error("[SyncProductWebhookJob] Fallo al sincronizar SKU: {$this->sku} (acción: {$this->action}). HTTP {$response->status()} - {$response->body()}");
-            throw new RequestException($response);
+            if ($response->failed()) {
+                SyncLog::create([
+                    'tipo' => 'producto',
+                    'referencia' => $this->sku,
+                    'accion' => $this->action,
+                    'estado' => 'error',
+                    'http_status' => $response->status(),
+                    'error' => mb_substr($response->body(), 0, 1000),
+                ]);
+
+                Log::error("[SyncProductWebhookJob] Fallo al sincronizar SKU: {$this->sku} (acción: {$this->action}). HTTP {$response->status()} - {$response->body()}");
+                throw new RequestException($response);
+            }
+
+            SyncLog::create([
+                'tipo' => 'producto',
+                'referencia' => $this->sku,
+                'accion' => $this->action,
+                'estado' => 'ok',
+                'http_status' => $response->status(),
+                'error' => null,
+            ]);
+
+            Log::info("[SyncProductWebhookJob] Producto sincronizado SKU: {$this->sku} (acción: {$this->action}). HTTP {$response->status()}");
+        } catch (\Throwable $e) {
+            if (! $e instanceof RequestException) {
+                SyncLog::create([
+                    'tipo' => 'producto',
+                    'referencia' => $this->sku,
+                    'accion' => $this->action,
+                    'estado' => 'error',
+                    'http_status' => null,
+                    'error' => mb_substr($e->getMessage(), 0, 1000),
+                ]);
+            }
+
+            throw $e;
         }
-
-        Log::info("[SyncProductWebhookJob] Producto sincronizado SKU: {$this->sku} (acción: {$this->action}). HTTP {$response->status()}");
     }
 }

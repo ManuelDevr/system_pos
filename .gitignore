@@ -102,3 +102,5 @@ ehthumbs.db
 
 # --- AI & Other Tools ---
 .aider*
+
+/.playwright-mcp/

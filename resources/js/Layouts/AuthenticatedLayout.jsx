@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from '@/Components/Sidebar';
 import Header from '@/Components/Header';
+import Sidebar from '@/Components/Sidebar';
+import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 
 export default function AuthenticatedLayout({ children }) {
@@ -12,7 +12,7 @@ export default function AuthenticatedLayout({ children }) {
     });
 
     const toggleSidebar = () => {
-        setSidebarOpen(prev => {
+        setSidebarOpen((prev) => {
             const next = !prev;
             if (!isMobile) localStorage.setItem('sidebarOpen', next);
             return next;
@@ -35,41 +35,44 @@ export default function AuthenticatedLayout({ children }) {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 transition-colors duration-300">
+        <div className="min-h-screen bg-slate-50 transition-colors duration-300 dark:bg-slate-950">
             <Toaster position="top-right" />
-            
+
             {/* Overlay para móviles cuando el sidebar está abierto */}
             {isMobile && isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity"
+                <div
+                    className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <Sidebar 
-                isOpen={isSidebarOpen} 
-                setOpen={setSidebarOpen} 
+            <Sidebar
+                isOpen={isSidebarOpen}
+                setOpen={setSidebarOpen}
                 isMobile={isMobile}
             />
 
             {/* Main Content Area */}
-            <div 
-                className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-                    !isMobile ? (isSidebarOpen ? 'ml-[280px]' : 'ml-[80px]') : 'ml-0'
+            <div
+                className={`flex min-h-screen flex-col transition-all duration-300 ease-in-out ${
+                    !isMobile
+                        ? isSidebarOpen
+                            ? 'ml-[280px]'
+                            : 'ml-[80px]'
+                        : 'ml-0'
                 }`}
             >
                 {/* Header */}
                 <Header toggleSidebar={toggleSidebar} />
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                    {children}
-                </main>
+                <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
 
                 {/* Footer */}
-                <footer className="py-4 px-8 border-t border-slate-200 bg-white/50 text-center text-xs text-slate-500">
-                    &copy; {new Date().getFullYear()} Ferretería CMA - Sistema de Gestión
+                <footer className="border-t border-slate-200 bg-white/50 px-8 py-4 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                    &copy; {new Date().getFullYear()} Ferretería CMA - Sistema
+                    de Gestión
                 </footer>
             </div>
         </div>

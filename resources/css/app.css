@@ -4,6 +4,75 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html.dark {
+        color-scheme: dark;
+    }
+    html.dark body {
+        background-color: #020617;
+        color: #e2e8f0;
+    }
+}
+
+/*
+ * Overrides globales de modo oscuro para clases hardcodeadas (slate/white)
+ * existentes en las páginas. Se aplican solo bajo .dark para no afectar el
+ * tema claro ni las vistas de impresión (que se excluyen explícitamente).
+ */
+@layer utilities {
+    .dark .bg-white:not(.dark-exempt) {
+        background-color: #0f172a;
+    }
+    .dark .bg-white\/50:not(.dark-exempt) {
+        background-color: rgba(15, 23, 42, 0.5);
+    }
+    .dark .bg-white\/80:not(.dark-exempt) {
+        background-color: rgba(15, 23, 42, 0.8);
+    }
+    .dark .bg-slate-50:not(.dark-exempt) {
+        background-color: #1e293b;
+    }
+    .dark .bg-slate-100:not(.dark-exempt) {
+        background-color: #1e293b;
+    }
+    .dark .border-slate-200:not(.dark-exempt) {
+        border-color: #1e293b;
+    }
+    .dark .border-slate-100:not(.dark-exempt) {
+        border-color: #1e293b;
+    }
+    .dark .text-slate-800:not(.dark-exempt),
+    .dark .text-slate-900:not(.dark-exempt) {
+        color: #f1f5f9;
+    }
+    .dark .text-slate-700:not(.dark-exempt) {
+        color: #cbd5e1;
+    }
+    .dark .text-slate-600:not(.dark-exempt) {
+        color: #94a3b8;
+    }
+    .dark .divide-slate-100:not(.dark-exempt) > :not([hidden]) ~ :not([hidden]) {
+        border-color: #1e293b;
+    }
+    .dark .divide-slate-200:not(.dark-exempt) > :not([hidden]) ~ :not([hidden]) {
+        border-color: #1e293b;
+    }
+}
+
+@media print {
+    .dark .bg-white,
+    .dark .bg-slate-50,
+    .dark .bg-slate-100 {
+        background-color: #ffffff !important;
+    }
+    .dark .text-slate-800,
+    .dark .text-slate-900,
+    .dark .text-slate-700,
+    .dark .text-slate-600 {
+        color: #0f172a !important;
+    }
+}
+
 @layer utilities {
     .no-scrollbar {
         -ms-overflow-style: none;

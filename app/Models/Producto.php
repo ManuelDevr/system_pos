@@ -35,12 +35,18 @@ class Producto extends Model
         'video_url',
         'imagenes',
         'mostrar_video',
+        'visible_tienda',
+        'destacado_tienda',
+        'orden_tienda',
     ];
 
     protected $casts = [
         'imagenes' => 'array',
         'mostrar_video' => 'boolean',
         'es_fraccionable' => 'boolean',
+        'visible_tienda' => 'boolean',
+        'destacado_tienda' => 'boolean',
+        'orden_tienda' => 'integer',
         'stock' => 'decimal:4',
         'stock_minimo' => 'decimal:4',
         'punto_reorden' => 'decimal:4',

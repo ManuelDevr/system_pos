@@ -15,8 +15,34 @@ class Categoria extends Model
         'nombre',
         'descripcion',
         'estado',
+        'visible_tienda',
+        'orden_tienda',
         'parent_id',
     ];
+
+    protected $casts = [
+        'visible_tienda' => 'boolean',
+        'orden_tienda' => 'integer',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saved(function (Categoria $categoria) {
+            if (config('sync.enabled')) {
+                app(\App\Services\CategorySyncService::class)->dispatchSync($categoria, 'update');
+            }
+        });
+
+        static::deleting(function (Categoria $categoria) {
+            if (config('sync.enabled')) {
+                try {
+                    app(\App\Services\CategorySyncService::class)->dispatchSync($categoria, 'delete');
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+        });
+    }
 
     public function parent(): BelongsTo
     {

@@ -44,6 +44,9 @@ class StoreProductRequest extends FormRequest
             'imagenes_keep.*' => 'string',
             'video_url' => 'nullable|string|max:500',
             'mostrar_video' => 'nullable|boolean',
+            'visible_tienda' => 'nullable|boolean',
+            'destacado_tienda' => 'nullable|boolean',
+            'orden_tienda' => 'nullable|integer|min:0',
         ];
     }
 }

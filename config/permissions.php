@@ -20,4 +20,5 @@ return [
     'gestionar_sucursales' => 'Gestionar Sucursales',
     'ver_reporte_rvie' => 'Ver Reporte RVIE - Ventas',
     'ver_reporte_rce' => 'Ver Reporte RCE - Compras',
+    'gestionar_tienda' => 'Gestionar Tienda Web',
 ];

@@ -43,12 +43,12 @@ const NavItem = ({ item, isOpen, isMobile, setOpen, isSubItem = false }) => {
             onClick={() => isMobile && setOpen(false)}
             className={`flex h-10 items-center rounded-xl px-3 text-sm font-medium transition-all duration-200 ${
                 isActive
-                    ? 'bg-indigo-600 font-bold text-white shadow-md shadow-indigo-200'
-                    : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-indigo-600 font-bold text-white shadow-md shadow-indigo-200 dark:shadow-none'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
             } ${isOpen || isMobile ? 'justify-start' : 'justify-center'} ${isSubItem ? 'relative mt-1' : ''}`}
         >
             {isSubItem && (
-                <div className="absolute left-[-12px] top-1/2 h-[2px] w-3 -translate-y-1/2 bg-slate-200" />
+                <div className="absolute left-[-12px] top-1/2 h-[2px] w-3 -translate-y-1/2 bg-slate-200 dark:bg-slate-700" />
             )}
             <item.icon
                 className={`h-5 w-5 flex-shrink-0 ${isOpen || isMobile ? (isSubItem ? 'mr-3 h-4 w-4' : 'mr-3') : ''}`}
@@ -98,16 +98,16 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
             >
                 <button
                     onClick={() => setShowFloating(!showFloating)}
-                    className={`rounded-xl p-2.5 transition-all duration-300 ${showFloating ? 'scale-110 bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+                    className={`rounded-xl p-2.5 transition-all duration-300 ${showFloating ? 'scale-110 bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                     <section.icon size={22} />
                 </button>
 
                 {showFloating && (
                     <div className="animate-in fade-in slide-in-from-left-2 absolute left-full top-0 z-[60] ml-2 w-64 duration-200">
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
-                            <div className="-mx-3 -mt-3 mb-3 border-b border-slate-100 bg-slate-50/50 px-4 py-3">
-                                <div className="flex items-center gap-2 text-indigo-600">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                            <div className="-mx-3 -mt-3 mb-3 border-b border-slate-100 bg-slate-50/50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                                     <section.icon size={16} />
                                     <span className="text-xs font-black uppercase tracking-widest">
                                         {section.title}
@@ -117,7 +117,7 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
 
                             <div className="relative space-y-1 pl-2">
                                 {/* Línea vertical del árbol */}
-                                <div className="absolute bottom-4 left-4 top-0 w-[1.5px] bg-slate-200" />
+                                <div className="absolute bottom-4 left-4 top-0 w-[1.5px] bg-slate-200 dark:bg-slate-700" />
 
                                 {visibleItems.map((item) => {
                                     const isItemActive = route().current(
@@ -132,8 +132,8 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
                                             }
                                             className={`group relative flex h-10 items-center rounded-xl pl-8 pr-3 text-xs font-bold transition-all ${
                                                 isItemActive
-                                                    ? 'bg-indigo-50 text-indigo-600'
-                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                                                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                                             }`}
                                         >
                                             {/* Línea horizontal del árbol */}
@@ -141,7 +141,7 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
                                                 className={`absolute left-2 top-1/2 h-[1.5px] w-4 -translate-y-1/2 transition-colors ${
                                                     isItemActive
                                                         ? 'bg-indigo-400'
-                                                        : 'bg-slate-200 group-hover:bg-slate-300'
+                                                        : 'bg-slate-200 group-hover:bg-slate-300 dark:bg-slate-700 dark:group-hover:bg-slate-600'
                                                 }`}
                                             />
 
@@ -166,16 +166,18 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 transition-all duration-200 ${
-                    !isCollapsed ? 'bg-slate-50' : 'hover:bg-slate-50'
+                    !isCollapsed
+                        ? 'bg-slate-50 dark:bg-slate-800'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
             >
                 <div className="flex items-center gap-3">
                     <div
-                        className={`rounded-lg p-1.5 transition-colors ${!isCollapsed ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 group-hover:text-slate-600'}`}
+                        className={`rounded-lg p-1.5 transition-colors ${!isCollapsed ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`}
                     >
                         <section.icon size={18} />
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-700">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200">
                         {section.title}
                     </span>
                 </div>
@@ -187,7 +189,7 @@ const CollapsibleSection = ({ section, isOpen, isMobile, setOpen }) => {
             <div
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${!isCollapsed ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
             >
-                <div className="relative ml-5 mt-1 space-y-1 border-l-2 border-slate-100 pl-4">
+                <div className="relative ml-5 mt-1 space-y-1 border-l-2 border-slate-100 pl-4 dark:border-slate-800">
                     {visibleItems.map((item) => (
                         <NavItem
                             key={item.label}
@@ -398,6 +400,12 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
                 },
                 {
                     icon: Store,
+                    label: 'Gestión de tienda',
+                    routeName: 'tienda.index',
+                    permission: 'gestionar_tienda',
+                },
+                {
+                    icon: Store,
                     label: 'Sucursales',
                     routeName: 'sucursales.index',
                     permission: 'gestionar_sucursales',
@@ -416,18 +424,18 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
 
     return (
         <aside
-            className={`fixed top-0 z-50 flex h-full flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out`}
+            className={`fixed top-0 z-50 flex h-full flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900`}
             style={{
                 width: sidebarWidth,
                 left: isMobile ? (isOpen ? '0' : '-280px') : '0',
             }}
         >
-            <div className="flex h-[70px] flex-shrink-0 items-center justify-between border-b border-slate-200 px-4">
+            <div className="flex h-[70px] flex-shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
                 <Link
                     href={route('dashboard')}
                     className={`flex items-center ${isOpen || isMobile ? 'justify-start' : 'justify-center'} group w-full`}
                 >
-                    <div className="rounded-xl border border-slate-100 bg-white p-1.5 shadow-lg transition-transform duration-300 group-hover:scale-110">
+                    <div className="rounded-xl border border-slate-100 bg-white p-1.5 shadow-lg transition-transform duration-300 group-hover:scale-110 dark:border-slate-700 dark:bg-slate-800">
                         <img
                             src={Logo}
                             alt="Logo"
@@ -436,9 +444,9 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
                     </div>
                     {(isOpen || isMobile) && (
                         <div className="ml-3">
-                            <h1 className="text-lg font-black italic tracking-tighter text-slate-800">
+                            <h1 className="text-lg font-black italic tracking-tighter text-slate-800 dark:text-slate-100">
                                 CMA{' '}
-                                <span className="font-bold text-indigo-600">
+                                <span className="font-bold text-indigo-600 dark:text-indigo-400">
                                     POS
                                 </span>
                             </h1>
@@ -451,7 +459,7 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
                 {isMobile && (
                     <button
                         onClick={() => setOpen(false)}
-                        className="p-2 text-slate-400 transition-colors hover:text-slate-600"
+                        className="p-2 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
                     >
                         <FaTimes size={20} />
                     </button>
@@ -476,7 +484,7 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
                                     href={element.external}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100"
+                                    className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                                 >
                                     <element.icon className="mr-3 h-5 w-5 flex-shrink-0" />
                                     {(isOpen || isMobile) && (
@@ -509,15 +517,15 @@ const Sidebar = ({ isOpen, setOpen, isMobile }) => {
 
             {!isMobile && (
                 <div
-                    className={`flex-shrink-0 border-t border-slate-100 bg-slate-50/50 p-4 ${!isOpen ? 'pb-12 pt-5' : ''}`}
+                    className={`flex-shrink-0 border-t border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/50 ${!isOpen ? 'pb-12 pt-5' : ''}`}
                 >
                     <button
                         onClick={() => setOpen(!isOpen)}
                         title={isOpen ? 'Minimizar menú' : 'Expandir menú'}
                         className={`flex h-11 w-full items-center justify-center rounded-xl transition-all duration-300 ${
                             isOpen
-                                ? 'text-slate-400 hover:text-indigo-600'
-                                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'
+                                ? 'text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white'
                         }`}
                     >
                         {isOpen ? (

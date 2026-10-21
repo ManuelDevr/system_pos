@@ -21,6 +21,8 @@ class CategoryController extends Controller
             'nombre' => 'required|string|max:100|unique:categorias,nombre',
             'descripcion' => 'nullable|string',
             'parent_id' => 'nullable|exists:categorias,id',
+            'visible_tienda' => 'nullable|boolean',
+            'orden_tienda' => 'nullable|integer|min:0',
         ]);
 
         Categoria::create($validated);
@@ -43,6 +45,8 @@ class CategoryController extends Controller
                 }
             ],
             'estado' => 'required|in:Activo,Inactivo',
+            'visible_tienda' => 'nullable|boolean',
+            'orden_tienda' => 'nullable|integer|min:0',
         ]);
 
         $categoria->update($validated);

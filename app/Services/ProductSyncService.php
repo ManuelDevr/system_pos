@@ -24,25 +24,33 @@ class ProductSyncService
         $categoria      = $product->categoria;
         $categoriaPadre = $categoria?->parent;
 
+        $publicado = $product->estado === 'Activo'
+            && ($product->visible_tienda ?? true)
+            && ($categoria?->visible_tienda ?? true);
+
         $payload = [
-            'sku'            => $product->sku,
-            'nombre'         => $product->nombre,
-            'descripcion'    => $product->descripcion,
-            'precio'         => (float) $product->precio_venta,
-            'precio_compra'  => (float) $product->precio_compra,
-            'stock'          => (int) $product->stock,
-            'stock_minimo'   => (int) $product->stock_minimo,
-            'categoria'      => $categoria?->nombre,
-            'categoria_padre'=> $categoriaPadre?->nombre,
-            'marca'          => $product->marca?->nombre,
-            'unidad_medida'  => $product->unidad_medida,
-            'codigo_barras'  => $product->codigo_barras,
-            'imagen_url'     => $product->imagen_url,
-            'imagenes'       => $product->imagenes,
-            'video_url'      => $product->video_url,
-            'mostrar_video'  => (bool) $product->mostrar_video,
-            'disponible'     => $product->estado === 'Activo' && $product->stock > 0,
-            'action'         => $action,
+            'sku'             => $product->sku,
+            'nombre'          => $product->nombre,
+            'descripcion'     => $product->descripcion,
+            'precio'          => (float) $product->precio_venta,
+            'precio_compra'   => (float) $product->precio_compra,
+            'stock'           => (int) $product->stock,
+            'stock_minimo'    => (int) $product->stock_minimo,
+            'categoria'       => $categoria?->nombre,
+            'categoria_padre' => $categoriaPadre?->nombre,
+            'marca'           => $product->marca?->nombre,
+            'unidad_medida'   => $product->unidad_medida,
+            'codigo_barras'   => $product->codigo_barras,
+            'imagen_url'      => $product->imagen_url,
+            'imagenes'        => $product->imagenes,
+            'video_url'       => $product->video_url,
+            'mostrar_video'   => (bool) $product->mostrar_video,
+            'visible_tienda'  => (bool) ($product->visible_tienda ?? true),
+            'destacado_tienda'=> (bool) ($product->destacado_tienda ?? false),
+            'orden_tienda'    => $product->orden_tienda,
+            'publicado'       => $publicado,
+            'disponible'      => $publicado && $product->stock > 0,
+            'action'          => $action,
         ];
 
         // Firma HMAC para garantizar integridad (la Web la verifica con el mismo secreto).
@@ -89,23 +97,28 @@ class ProductSyncService
     {
         try {
             $payload = [
-                'sku'            => $data['sku'] ?? null,
-                'nombre'         => $data['nombre'] ?? null,
-                'descripcion'    => $data['descripcion'] ?? null,
-                'precio'         => (float) ($data['precio_venta'] ?? 0),
-                'precio_compra'  => (float) ($data['precio_compra'] ?? 0),
-                'stock'          => (int) ($data['stock'] ?? 0),
-                'stock_minimo'   => (int) ($data['stock_minimo'] ?? 0),
-                'categoria'      => null,
-                'categoria_padre'=> null,
-                'marca'          => null,
-                'unidad_medida'  => $data['unidad_medida'] ?? 'Unidad',
-                'codigo_barras'  => $data['codigo_barras'] ?? null,
-                'imagen_url'     => $data['imagen_url'] ?? null,
-                'video_url'      => $data['video_url'] ?? null,
-                'mostrar_video'  => (bool) ($data['mostrar_video'] ?? false),
-                'disponible'     => false,
-                'action'         => 'delete',
+                'sku'             => $data['sku'] ?? null,
+                'nombre'          => $data['nombre'] ?? null,
+                'descripcion'     => $data['descripcion'] ?? null,
+                'precio'          => (float) ($data['precio_venta'] ?? 0),
+                'precio_compra'   => (float) ($data['precio_compra'] ?? 0),
+                'stock'           => (int) ($data['stock'] ?? 0),
+                'stock_minimo'    => (int) ($data['stock_minimo'] ?? 0),
+                'categoria'       => null,
+                'categoria_padre' => null,
+                'marca'           => null,
+                'unidad_medida'   => $data['unidad_medida'] ?? 'Unidad',
+                'codigo_barras'   => $data['codigo_barras'] ?? null,
+                'imagen_url'      => $data['imagen_url'] ?? null,
+                'imagenes'        => $data['imagenes'] ?? null,
+                'video_url'       => $data['video_url'] ?? null,
+                'mostrar_video'   => (bool) ($data['mostrar_video'] ?? false),
+                'visible_tienda'  => false,
+                'destacado_tienda'=> false,
+                'orden_tienda'    => null,
+                'publicado'       => false,
+                'disponible'      => false,
+                'action'          => 'delete',
             ];
             $payload['hash_firma'] = $this->sign($payload);
             SyncProductWebhookJob::dispatch($payload['sku'], $payload, 'delete')->onQueue('sync-queue');

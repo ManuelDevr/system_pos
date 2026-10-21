@@ -13,6 +13,18 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <script>
+            (function() {
+                try {
+                    const theme = localStorage.getItem('cma-theme') || 'system';
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+                    document.documentElement.classList.toggle('dark', isDark);
+                    document.documentElement.dataset.theme = theme;
+                } catch (e) {}
+            })();
+        </script>
+
         <!-- Scripts -->
         @routes
         @viteReactRefresh
