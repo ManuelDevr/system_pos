@@ -66,8 +66,8 @@ const SaleRow = React.memo(({ sale, onOpenDetail }) => {
       </td>
       <td className="p-4 whitespace-nowrap text-center">
         <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-slate-700">{new Date(sale.created_at).toLocaleDateString()}</span>
-            <span className="text-[10px] text-slate-400 font-medium">{new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="text-xs font-bold text-slate-700">{sale.created_at ? new Date(sale.created_at).toLocaleDateString() : '—'}</span>
+            <span className="text-[10px] text-slate-400 font-medium">{sale.created_at ? new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
         </div>
       </td>
       <td className="p-4 whitespace-nowrap text-center text-xs font-bold text-slate-600 uppercase tracking-widest">
@@ -124,11 +124,13 @@ export default function Index({ ventas }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const filteredSales = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase();
     return ventas.filter(sale => {
-      const matchesSearch = sale.nro_comprobante.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (sale.nombre_cliente || sale.cliente?.nombre || 'General').toLowerCase().includes(searchTerm.toLowerCase());
+      const comprobante = sale.nro_comprobante || `#${sale.id}`;
+      const matchesSearch = comprobante.toLowerCase().includes(term) ||
+                           String(sale.nombre_cliente || sale.cliente?.nombre || 'General').toLowerCase().includes(term);
       
-      const saleDate = sale.created_at.split('T')[0];
+      const saleDate = sale.created_at ? sale.created_at.split('T')[0] : '';
       const matchesDate = (!startDate || saleDate >= startDate) && (!endDate || saleDate <= endDate);
       
       return matchesSearch && matchesDate;
@@ -149,9 +151,9 @@ export default function Index({ ventas }) {
   const handleExportPDF = async () => {
     const headers = ['Nro', 'Cliente', 'Fecha', 'Pago', 'Estado', 'Total'];
     const body = filteredSales.map(s => [
-      s.nro_comprobante,
+      s.nro_comprobante || `#${s.id}`,
       s.nombre_cliente || s.cliente?.nombre || 'General',
-      new Date(s.created_at).toLocaleDateString(),
+      s.created_at ? new Date(s.created_at).toLocaleDateString() : '—',
       s.metodo_pago,
       s.estado,
       `S/ ${parseFloat(s.total).toFixed(2)}`

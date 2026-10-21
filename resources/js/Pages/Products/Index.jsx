@@ -229,10 +229,6 @@ export default function Index({ productos, categorias, marcas }) {
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const totalProductos = productos.length;
-    const stockTotal = productos.reduce(
-        (sum, p) => sum + parseFloat(p.stock || 0),
-        0,
-    );
     const capitalInvertido = productos.reduce(
         (sum, p) =>
             sum + parseFloat(p.stock || 0) * parseFloat(p.precio_compra || 0),
@@ -258,14 +254,6 @@ export default function Index({ productos, categorias, marcas }) {
             color: 'text-fuchsia-600',
         },
         {
-            title: 'Stock Total',
-            value: stockTotal.toLocaleString('es-PE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            }),
-            color: 'text-emerald-600',
-        },
-        {
             title: 'Capital Invertido',
             value: `S/ ${capitalInvertido.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             color: 'text-amber-600',
@@ -274,11 +262,6 @@ export default function Index({ productos, categorias, marcas }) {
             title: 'Valor Venta',
             value: `S/ ${valorVenta.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             color: 'text-green-600',
-        },
-        {
-            title: 'Valor Venta Mayor',
-            value: `S/ ${valorVenta.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            color: 'text-blue-600',
         },
         {
             title: 'Producto más caro',
