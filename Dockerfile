@@ -17,25 +17,19 @@ RUN npm run build
 FROM php:8.2-fpm-alpine AS app
 WORKDIR /var/www/html
 
-# Dependencias del sistema + extensiones de Laravel (pgsql, redis, gd)
-RUN apk add --no-cache \
-        $PHPIZE_DEPS \
-        nginx \
-        supervisor \
-        libpq \
-        libpq-dev \
-        libzip-dev \
-        oniguruma-dev \
-        icu-dev \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        freetype-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
+# Paquetes de runtime del sistema (nginx + supervisor). Las extensiones PHP y
+# sus dependencias de compilacion las resuelve install-php-extensions, que
+# ademas usa binarios precompilados cuando existen, reintenta descargas y
+# limpia los paquetes de build al terminar.
+RUN apk add --no-cache nginx supervisor
+
+# Extensiones de Laravel (pgsql, redis, gd, intl, ...). Usar el instalador
+# oficial en lugar de `pecl install` evita depender de pecl.php.net (causa del
+# fallo 504 Gateway Timeout del build anterior).
+COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions \
         pdo_pgsql pgsql \
-        mbstring zip intl gd pcntl bcmath exif \
-    && pecl install redis \
-    && docker-php-ext-enable redis
+        mbstring zip intl gd pcntl bcmath exif redis
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
